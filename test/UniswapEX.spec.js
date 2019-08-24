@@ -122,9 +122,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
     it('should return correct vault', async function() {
       const address = await vaultFactory.getVault(fakeKey)
       await token1.setBalance(ONE_ETH, address)
-      const tx = await vaultFactory.executeVault(fakeKey, token1.address, user)
-
-      console.log(tx.rawLogs)
+      await vaultFactory.executeVault(fakeKey, token1.address, user)
     })
     it('revert if vault has no balance', async function() {
       await assertRevert(
