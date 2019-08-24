@@ -97,6 +97,32 @@ contract UniswapEX {
         emit DepositETH(msg.value, _data);
     }
 
+    function cancel(
+        IERC20 _from,
+        IERC20 _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external {
+        require(msg.sender == _owner, "only owner can cancel");
+        bytes32 key = _keyOf(
+            _from,
+            _to,
+            _return,
+            _fee,
+            _owner
+        );
+
+        if (address(_from) == ETH_ADDRESS) {
+            amount = ethDeposits[_key];
+            ethDeposits[_key] = 0;
+            msg.sender.transfer(amount);
+        } else {
+            // TODO Call transfer of Fabric library
+            revert("Not implemented");
+        }
+    }
+
     function execute(
         IERC20 _from,
         IERC20 _to,
