@@ -88,8 +88,7 @@ contract UniswapEX {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
         } else {
-            // TODO: pull tokens from Fabric lib
-            revert("not implemented");
+            _key.executeVault(_from, address(this));
         }
     }
 
@@ -109,6 +108,22 @@ contract UniswapEX {
                 _owner
             )
         );
+    }
+
+    function vaultOfOrder(
+        IERC20 _from,
+        IERC20 _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external view returns (address) {
+        return _keyOf(
+            _from,
+            _to,
+            _return,
+            _fee,
+            _owner
+        ).getVault();
     }
 
     function encode(
@@ -166,8 +181,7 @@ contract UniswapEX {
         if (address(_from) == ETH_ADDRESS) {
             return ethDeposits[key] != 0;
         } else {
-            // TODO Check Fabric library
-            revert("not implemented");
+            return _from.balanceOf(key.getVault()) != 0;
         }
     }
 
@@ -191,8 +205,7 @@ contract UniswapEX {
         if (address(_from) == ETH_ADDRESS) {
             amount = ethDeposits[key];
         } else {
-            // TODO Check Fabric library
-            revert("not implemented");
+            amount = _from.balanceOf(key.getVault());
         }
 
         uint256 bought;
@@ -240,8 +253,7 @@ contract UniswapEX {
             ethDeposits[key] = 0;
             msg.sender.transfer(amount);
         } else {
-            // TODO Call transfer of Fabric library
-            revert("Not implemented");
+            key.executeVault(_from, msg.sender);
         }
     }
 
