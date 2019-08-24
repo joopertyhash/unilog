@@ -1,5 +1,6 @@
 pragma solidity ^0.5.11;
 
+import "../interfaces/IERC20.sol";
 import "../commons/Vault.sol";
 
 
@@ -29,22 +30,20 @@ library Fabric {
     /**
     * @dev Create deterministic vault.
     */
-    function createVault(bytes32 _key, address _token, address _to) internal {
+    function executeVault(bytes32 _key, IERC20 _token, address _to) internal {
+        require(_token.balanceOf(getVault(_key)) > 0, "Vault has no balance");
         address addr;
         bytes memory slotcode = type(Vault).creationCode;
 
         /* solium-disable-next-line */
         assembly{
-          let size := mload(slotcode)
-          // Concatenate arguments for the constructor
-          mstore(add(slotcode, add(size, 0x20)), _token)
-          mstore(add(slotcode, add(size, 0x34)), _to)
-
           // Create the contract arguments for the constructor
           addr := create2(0, add(slotcode, 0x20), mload(slotcode), _key)
           if iszero(extcodesize(addr)) {
             revert(0, 0)
           }
         }
+
+        Vault(addr).execute(_token, _to);
     }
 }
