@@ -136,18 +136,20 @@ contract UniswapEX {
             revert("not implemented");
         }
 
+        uint256 bought;
+
         if (address(_from) == ETH_ADDRESS) {
             uint256 sell = amount.sub(_fee);
-            uint256 bought = uniswapFactory.getExchange(_from).getEthToTokenInputPrice(sell);
-            return bought >= _return;
+            bought = uniswapFactory.getExchange(_to).getEthToTokenInputPrice(sell);
         } else if (address(_to) == ETH_ADDRESS) {
             uint256 bought = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
-            return bought.sub(_fee) >= _return;
+            bought = bought.sub(_fee);
         } else {
             uint256 boughtEth = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
-            uint256 boughtToken = uniswapFactory.getExchange(_from).getEthToTokenInputPrice(boughtEth.sub(_fee));
-            return boughtToken >= _return;
+            bought = uniswapFactory.getExchange(_to).getEthToTokenInputPrice(boughtEth.sub(_fee));
         }
+
+        return bought >= _return;
     }
 
     function depositETH(
