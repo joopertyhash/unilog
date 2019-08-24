@@ -4,7 +4,8 @@ import FACTORY_ABI from '../constants/abis/factory'
 import EXCHANGE_ABI from '../constants/abis/exchange'
 import ERC20_ABI from '../constants/abis/erc20'
 import ERC20_BYTES32_ABI from '../constants/abis/erc20_bytes32'
-import { FACTORY_ADDRESSES } from '../constants'
+import UNISWAPEX_ABI from '../constants/abis/uniswapDex'
+import { FACTORY_ADDRESSES, UNISWAPEX_ADDRESSES } from '../constants'
 import { formatFixed } from '@uniswap/sdk'
 
 import UncheckedJsonRpcSigner from './signer'
@@ -106,6 +107,11 @@ export function getContract(address, ABI, library, account) {
   }
 
   return new ethers.Contract(address, ABI, getProviderOrSigner(library, account))
+}
+
+// account is optional
+export function getUniswapExContract(networkId, library, account) {
+  return getContract(UNISWAPEX_ADDRESSES[networkId], UNISWAPEX_ABI, library, account)
 }
 
 // account is optional
