@@ -1,0 +1,22 @@
+{
+  "name": "uniswap-ex",
+  "version": "1.0.0",
+  "description": "Uniswap Order Exchange",
+  "main": "truffle-config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Agusx1211/uniswap-ex.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Agusx1211/uniswap-ex/issues"
+  },
+  "homepage": "https://github.com/Agusx1211/uniswap-ex#readme",
+  "dependencies": {
+    "truffle": "^5.0.33"
+  }
+}
