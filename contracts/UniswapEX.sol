@@ -24,6 +24,7 @@ contract UniswapEX {
         uint256 _bought,
         uint256 _fee,
         address _owner,
+        bytes32 _salt,
         address _relayer
     );
 
@@ -97,7 +98,8 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) private pure returns (bytes32) {
         return keccak256(
             abi.encode(
@@ -105,7 +107,8 @@ contract UniswapEX {
                 _to,
                 _return,
                 _fee,
-                _owner
+                _owner,
+                _salt
             )
         );
     }
@@ -115,14 +118,16 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) public view returns (address) {
         return _keyOf(
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         ).getVault();
     }
 
@@ -132,7 +137,8 @@ contract UniswapEX {
         uint256 _amount,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external view returns (bytes memory) {
         return abi.encodeWithSelector(
             _from.transfer.selector,
@@ -141,7 +147,8 @@ contract UniswapEX {
                 _to,
                 _return,
                 _fee,
-                _owner
+                _owner,
+                _salt
             ),
             _amount,
             abi.encode(
@@ -149,7 +156,8 @@ contract UniswapEX {
                 _to,
                 _return,
                 _fee,
-                _owner
+                _owner,
+                _salt
             )
         );
     }
@@ -159,14 +167,16 @@ contract UniswapEX {
         address _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external view returns (bytes memory) {
         return abi.encode(
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         );
     }
 
@@ -196,14 +206,16 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external view returns (bool) {
         bytes32 key = _keyOf(
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         );
 
         if (address(_from) == ETH_ADDRESS) {
@@ -218,14 +230,16 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external view returns (bool) {
         bytes32 key = _keyOf(
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         );
 
         // Pull amount
@@ -265,7 +279,8 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external {
         require(msg.sender == _owner, "only owner can cancel");
         bytes32 key = _keyOf(
@@ -273,7 +288,8 @@ contract UniswapEX {
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         );
 
         if (address(_from) == ETH_ADDRESS) {
@@ -290,14 +306,16 @@ contract UniswapEX {
         IERC20 _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) external {
         bytes32 key = _keyOf(
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         );
 
         // Pull amount
@@ -337,6 +355,7 @@ contract UniswapEX {
             bought,
             _fee,
             _owner,
+            _salt,
             msg.sender
         );
     }

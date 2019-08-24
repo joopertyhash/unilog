@@ -47,6 +47,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   const fakeKey = web3.utils.sha3('0x01')
   const anotherFakeKey = web3.utils.sha3('0x02')
   const ONE_ETH = new BN(1)
+  const FIXED_SALT = "0xf9fea21bcccd3d13caa0d7f67bc4bd0776a06c420e932ee5add8f3affb3f354b";
 
   // Contracts
   let token1
@@ -99,7 +100,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         token1.address, // Buy TOKEN 1
         new BN(300),    // Get at least 300 Tokens
         new BN(10),     // Pay 10 WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       await uniswapEx.depositETH(encodedOrder, { value: new BN(10000), from: user })
@@ -118,6 +120,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         new BN(300),    // Get at least 300 Tokens
         new BN(10),     // Pay 10 WEI to sender
         user,           // Owner of the order
+        FIXED_SALT,
         {
           from: anotherUser,
           gasPrice: 0
@@ -140,7 +143,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         ethAddress,     // Buy TOKEN 1
         new BN(50),     // Get at least 50 ETH Wei
         new BN(15),     // Pay 15 WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       // Encode order transfer
@@ -150,7 +154,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         new BN(10000),  // Tokens to sell
         new BN(50),     // Get at least 50 ETH Wei
         new BN(15),     // Pay 15 WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       const vaultAddress = await uniswapEx.vaultOfOrder(
@@ -158,7 +163,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         ethAddress,     // Buy ETH
         new BN(50),     // Get at least 50 ETH Wei
         new BN(15),     // Pay 15 WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, "token vault");
@@ -190,6 +196,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         new BN(50),     // Get at least 50 ETH Wei
         new BN(15),     // Pay 15 WEI to sender
         user,           // Owner of the order
+        FIXED_SALT,
         {
           from: anotherUser,
           gasPrice: 0
@@ -213,7 +220,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         token2.address, // Buy TOKEN 2
         new BN(50),     // Get at least 50 Token Wei
         new BN(9),      // Pay 15 WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       // Encode order transfer
@@ -223,7 +231,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         new BN(1000),   // Tokens to sell
         new BN(50),     // Get at least 50 ETH Wei
         new BN(9),      // Pay WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       const vaultAddress = await uniswapEx.vaultOfOrder(
@@ -231,7 +240,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         token2.address, // Buy ETH
         new BN(50),     // Get at least 50 ETH Wei
         new BN(9),      // Pay WEI to sender
-        user            // Owner of the order
+        user,           // Owner of the order
+        FIXED_SALT
       );
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, "token vault");
@@ -264,6 +274,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
         new BN(50),     // Get at least 50 ETH Wei
         new BN(9),      // Pay 9 WEI to sender
         user,           // Owner of the order
+        FIXED_SALT,
         {
           from: anotherUser,
           gasPrice: 0
