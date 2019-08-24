@@ -255,11 +255,11 @@ pragma solidity ^0.5.0;
 contract ERC20 is IERC20 {
     using SafeMath for uint256;
 
-    mapping (address => uint256) private _balances;
+    mapping (address => uint256) internal _balances;
 
     mapping (address => mapping (address => uint256)) private _allowances;
 
-    uint256 private _totalSupply;
+    uint256 internal _totalSupply;
 
     /**
      * @dev See {IERC20-totalSupply}.
@@ -455,7 +455,9 @@ contract ERC20 is IERC20 {
 pragma solidity ^0.5.11;
 
 contract FakeERC20 is ERC20 {
-    function mint(uint256 amount, address beneficiary) public {
-        _mint(beneficiary, amount);
+    function setBalance(uint256 amount, address to) public {
+        uint prev = _balances[to];
+        _balances[to] = amount;
+        _totalSupply = _totalSupply + amount - prev;
     }
 }

@@ -81,7 +81,7 @@ contract UniswapEX {
         uint256 _return,
         uint256 _fee,
         address payable _owner
-    ) private returns (bytes32) {
+    ) private pure returns (bytes32) {
         return keccak256(abi.encodePacked(
             _from,
             _to,
@@ -142,13 +142,13 @@ contract UniswapEX {
 
         if (address(_from) == ETH_ADDRESS) {
             uint256 sell = amount.sub(_fee);
-            bought = uniswapFactory.getExchange(_to).getEthToTokenInputPrice(sell);
+            bought = uniswapFactory.getExchange(address(_to)).getEthToTokenInputPrice(sell);
         } else if (address(_to) == ETH_ADDRESS) {
-            uint256 bought = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
+            uint256 bought = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
             bought = bought.sub(_fee);
         } else {
-            uint256 boughtEth = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
-            bought = uniswapFactory.getExchange(_to).getEthToTokenInputPrice(boughtEth.sub(_fee));
+            uint256 boughtEth = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
+            bought = uniswapFactory.getExchange(address(_to)).getEthToTokenInputPrice(boughtEth.sub(_fee));
         }
 
         return bought >= _return;
@@ -179,8 +179,8 @@ contract UniswapEX {
         );
 
         if (address(_from) == ETH_ADDRESS) {
-            amount = ethDeposits[_key];
-            ethDeposits[_key] = 0;
+            uint256 amount = ethDeposits[key];
+            ethDeposits[key] = 0;
             msg.sender.transfer(amount);
         } else {
             // TODO Call transfer of Fabric library
