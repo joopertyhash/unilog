@@ -41,7 +41,7 @@ contract UniswapEX {
         uint256 _amount,
         address _dest
     ) private returns (uint256) {
-        UniswapExchange uniswap = uniswapFactory.getExchange(address(_token));
+        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
 
         // Check if previues allowance is enought
         // and approve Uniswap if is not
@@ -82,12 +82,13 @@ contract UniswapEX {
         uint256 _fee,
         address payable _owner
     ) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner
+        return keccak256(
+            abi.encodePacked(
+                _from,
+                _to,
+                _return,
+                _fee,
+                _owner
         ));
     }
 
@@ -144,7 +145,7 @@ contract UniswapEX {
             uint256 sell = amount.sub(_fee);
             bought = uniswapFactory.getExchange(address(_to)).getEthToTokenInputPrice(sell);
         } else if (address(_to) == ETH_ADDRESS) {
-            uint256 bought = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
+            bought = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
             bought = bought.sub(_fee);
         } else {
             uint256 boughtEth = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
