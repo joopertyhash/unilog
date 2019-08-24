@@ -89,6 +89,67 @@ contract UniswapEX {
         ));
     }
 
+    function exists(
+        IERC20 _from,
+        IERC20 _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _from,
+            _to,
+            _return,
+            _fee,
+            _owner
+        );
+
+        if (address(_from) == ETH_ADDRESS) {
+            return ethDeposits[key] != 0;
+        } else {
+            // TODO Check Fabric library
+            revert("not implemented");
+        }
+    }
+
+    function canFill(
+        IERC20 _from,
+        IERC20 _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _from,
+            _to,
+            _return,
+            _fee,
+            _owner
+        );
+
+        // Pull amount
+        uint256 amount;
+        if (address(_from) == ETH_ADDRESS) {
+            amount = ethDeposits[key];
+        } else {
+            // TODO Check Fabric library
+            revert("not implemented");
+        }
+
+        if (address(_from) == ETH_ADDRESS) {
+            uint256 sell = amount.sub(_fee);
+            uint256 bought = uniswapFactory.getExchange(_from).getEthToTokenInputPrice(sell);
+            return bought >= _return;
+        } else if (address(_to) == ETH_ADDRESS) {
+            uint256 bought = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
+            return bought.sub(_fee) >= _return;
+        } else {
+            uint256 boughtEth = uniswapFactory.getExchange(_from).getTokenToEthInputPrice(_amount);
+            uint256 boughtToken = uniswapFactory.getExchange(_from).getEthToTokenInputPrice(boughtEth.sub(_fee));
+            return boughtToken >= _return;
+        }
+    }
+
     function depositETH(
         bytes calldata _data
     ) external payable {
