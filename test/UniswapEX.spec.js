@@ -9,6 +9,22 @@ const ERC20 = artifacts.require('FakeERC20')
 const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
 const UniswapFactory = artifacts.require('UniswapFactory')
 const UniswapExchange = artifacts.require('UniswapExchange')
+const VaultFactory = artifacts.require('VaultFactory')
+const Vault = artifacts.require('Vault')
+
+function buildCreate2Address(creatorAddress, saltHex, byteCode) {
+  return `0x${web3.utils
+    .soliditySha3(
+      { t: 'bytes1', v: '0xff' },
+      { t: 'address', v: creatorAddress },
+      { t: 'bytes32', v: saltHex },
+      {
+        t: 'bytes32',
+        v: web3.utils.soliditySha3({ t: 'bytes', v: byteCode })
+      }
+    )
+    .slice(-40)}`.toLowerCase()
+}
 
 contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   // globals
@@ -20,7 +36,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   const fromAnotherUser = { from: anotherUser }
   const fromHacker = { from: hacker }
 
-  const never = maxBn;
+  const never = maxBn
 
   const creationParams = {
     ...fromOwner,
@@ -28,9 +44,14 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
     gasPrice: 21e9
   }
 
+  const fakeKey = web3.utils.sha3('0x01')
+  const anotherFakeKey = web3.utils.sha3('0x02')
+  const ONE_ETH = new BN(1)
+
   // Contracts
   let token1
   let token2
+  let vaultFactory
   let uniswapEx
   let uniswapFactory
   let uniswapToken1
@@ -48,6 +69,9 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
     uniswapToken2 = await UniswapExchange.at(await uniswapFactory.getExchange(token2.address));
     // Deploy exchange
     uniswapEx = await UniswapEx.new(uniswapFactory.address, { from: owner })
+
+    // Deploy vault
+    vaultFactory = await VaultFactory.new(creationParams)
   })
 
   describe('Constructor', function () {
@@ -105,4 +129,43 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       await uniswapTokenSnap.requireDecrease(bought);
     });
   });
+  describe('Get vault', function () {
+    it('should return correct vault', async function () {
+      const address = (await vaultFactory.getVault(fakeKey)).toLowerCase()
+      const expectedAddress = buildCreate2Address(
+        vaultFactory.address,
+        fakeKey,
+        Vault.bytecode
+      )
+      expect(address).to.not.be.equal(zeroAddress)
+      expect(address).to.be.equal(expectedAddress)
+    })
+    it('should return same vault for the same key', async function () {
+      const address = await vaultFactory.getVault(fakeKey)
+      const expectedAddress = await vaultFactory.getVault(fakeKey)
+      expect(address).to.be.equal(expectedAddress)
+    })
+    it('should return a different vault for a different key', async function () {
+      const address = await vaultFactory.getVault(fakeKey)
+      const expectedAddress = await vaultFactory.getVault(anotherFakeKey)
+      expect(address).to.not.be.equal(zeroAddress)
+      expect(expectedAddress).to.not.be.equal(zeroAddress)
+      expect(address).to.not.be.equal(expectedAddress)
+    })
+  })
+  describe('Create vault', function () {
+    it('should return correct vault', async function () {
+      const address = await vaultFactory.getVault(fakeKey)
+      await token1.setBalance(ONE_ETH, address)
+      const tx = await vaultFactory.executeVault(fakeKey, token1.address, user)
+
+      console.log(tx.rawLogs)
+    })
+    it('revert if vault has no balance', async function () {
+      await assertRevert(
+        vaultFactory.executeVault(fakeKey, token1.address, user),
+        'Vault has no balance'
+      )
+    })
+  })
 })
