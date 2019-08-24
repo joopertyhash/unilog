@@ -1,3 +1,9 @@
+pragma solidity ^0.5.11;
+
+import "./interfaces/IERC20.sol";
+import "./interfaces/UniswapExchange.sol";
+import "./interfaces/UniswapFactory.sol";
+
 
 contract UniswapEX {
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -14,7 +20,7 @@ contract UniswapEX {
     ) external {
         
     }
-    
+
     function execute(
         IERC20 _from,
         IERC20 _to,
