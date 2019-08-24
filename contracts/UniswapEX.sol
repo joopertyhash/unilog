@@ -88,7 +88,7 @@ contract UniswapEX {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
         } else {
-            _key.executeVault(_from, address(this));
+            amount = _key.executeVault(_from, address(this));
         }
     }
 
@@ -116,7 +116,7 @@ contract UniswapEX {
         uint256 _return,
         uint256 _fee,
         address payable _owner
-    ) external view returns (address) {
+    ) public view returns (address) {
         return _keyOf(
             _from,
             _to,
@@ -124,6 +124,34 @@ contract UniswapEX {
             _fee,
             _owner
         ).getVault();
+    }
+
+    function encodeTokenOrder(
+        IERC20 _from,
+        IERC20 _to,
+        uint256 _amount,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external view returns (bytes memory) {
+        return abi.encodeWithSelector(
+            _from.transfer.selector,
+            vaultOfOrder(
+                _from,
+                _to,
+                _return,
+                _fee,
+                _owner
+            ),
+            _amount,
+            abi.encode(
+                _from,
+                _to,
+                _return,
+                _fee,
+                _owner
+            )
+        );
     }
 
     function encode(
@@ -274,6 +302,8 @@ contract UniswapEX {
 
         // Pull amount
         uint256 amount = _pull(_from, key);
+        require(amount > 0, "order does not exists");
+
         uint256 bought;
 
         if (address(_from) == ETH_ADDRESS) {
@@ -291,11 +321,11 @@ contract UniswapEX {
             _owner.transfer(bought);
         } else {
             // Convert from FromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _to, amount, address(this));
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _from, amount, address(this));
             msg.sender.transfer(_fee);
 
             // Convert from ETH to ToToken
-            bought = _ethToToken(uniswapFactory, _from, boughtEth.sub(_fee), _owner);
+            bought = _ethToToken(uniswapFactory, _to, boughtEth.sub(_fee), _owner);
         }
 
         require(bought >= _return, "sell return is not enought");

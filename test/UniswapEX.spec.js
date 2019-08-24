@@ -72,6 +72,16 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
 
     // Deploy vault
     vaultFactory = await VaultFactory.new(creationParams)
+
+    // Add liquidity to Uniswap exchange 1
+    await token1.setBalance(new BN(1000000000), owner)
+    await token1.approve(uniswapToken1.address, maxBn, { from: owner })
+    await uniswapToken1.addLiquidity(0, new BN(1000000000), never, { from: owner, value: new BN(5000000000) })
+
+    // Add liquidity to Uniswap exchange 2
+    await token2.setBalance(new BN(1000000000), owner)
+    await token2.approve(uniswapToken2.address, maxBn, { from: owner })
+    await uniswapToken2.addLiquidity(0, new BN(1000000000), never, { from: owner, value: new BN(5000000000) })
   })
 
   describe('Constructor', function () {
@@ -83,11 +93,6 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   })
   describe('It should trade on Uniswap', async function () {
     it('should execute buy tokens with ETH', async () => {
-      // Add liquidity to Uniswap exchange
-      await token1.setBalance(new BN(1000000000), owner)
-      await token1.approve(uniswapToken1.address, maxBn, { from: owner })
-      await uniswapToken1.addLiquidity(0, new BN(1000000000), never, { from: owner, value: new BN(5000000000) })
-
       // Create order
       const encodedOrder = await uniswapEx.encode(
         ethAddress,     // Sell ETH
@@ -127,6 +132,155 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       await uniswapEtherSnap.requireIncrease(new BN(9990));
       await userTokenSnap.requireIncrease(bought);
       await uniswapTokenSnap.requireDecrease(bought);
+    });
+    it('should execute sell tokens for ETH', async () => {
+      // Create order
+      const encodedOrder = await uniswapEx.encode(
+        token1.address, // Sell ETH
+        ethAddress,     // Buy TOKEN 1
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user            // Owner of the order
+      );
+
+      // Encode order transfer
+      const orderTx = await uniswapEx.encodeTokenOrder(
+        token1.address, // Sell token 1
+        ethAddress,     // Buy ETH
+        new BN(10000),  // Tokens to sell
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user            // Owner of the order
+      );
+
+      const vaultAddress = await uniswapEx.vaultOfOrder(
+        token1.address, // Sell token 1
+        ethAddress,     // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user            // Owner of the order
+      );
+
+      const vaultSnap = await balanceSnap(token1, vaultAddress, "token vault");
+
+      await token1.setBalance(new BN(10000), user);
+
+      // Send tokens tx
+      await web3.eth.sendTransaction({
+        from: user,
+        to: token1.address,
+        data: orderTx,
+        gasPrice: 0
+      });
+
+      await vaultSnap.requireIncrease(new BN(10000));
+
+      // Take balance snapshots
+      const exTokenSnap = await balanceSnap(token1, uniswapEx.address, "Uniswap EX");
+      const exEtherSnap = await balanceSnap(token1, uniswapEx.address, "Uniswap EX");
+      const executerEtherSnap = await etherSnap(anotherUser, "executer");
+      const uniswapTokenSnap = await balanceSnap(token1, uniswapToken1.address, "uniswap");
+      const uniswapEtherSnap = await etherSnap(uniswapToken1.address, "uniswap");
+      const userTokenSnap = await etherSnap(user, "user");
+
+      // Execute order
+      const tx = await uniswapEx.execute(
+        token1.address, // Sell token 1
+        ethAddress,     // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user,           // Owner of the order
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      );
+
+      const bought = tx.logs[0].args._bought;
+
+      // Validate balances
+      await exEtherSnap.requireConstant();
+      await exTokenSnap.requireConstant();
+      await executerEtherSnap.requireIncrease(new BN(15));
+      await uniswapTokenSnap.requireIncrease(new BN(10000));
+      await uniswapEtherSnap.requireDecrease(bought.add(new BN(15)));
+      await userTokenSnap.requireIncrease(bought);
+    });
+    it('Should exchange tokens for tokens', async function () {
+      // Create order
+      const encodedOrder = await uniswapEx.encode(
+        token1.address, // Sell TOKEN 1
+        token2.address, // Buy TOKEN 2
+        new BN(50),     // Get at least 50 Token Wei
+        new BN(9),      // Pay 15 WEI to sender
+        user            // Owner of the order
+      );
+
+      // Encode order transfer
+      const orderTx = await uniswapEx.encodeTokenOrder(
+        token1.address, // Sell token 1
+        token2.address, // Buy TOKEN 2
+        new BN(1000),   // Tokens to sell
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay WEI to sender
+        user            // Owner of the order
+      );
+
+      const vaultAddress = await uniswapEx.vaultOfOrder(
+        token1.address, // Sell token 1
+        token2.address, // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay WEI to sender
+        user            // Owner of the order
+      );
+
+      const vaultSnap = await balanceSnap(token1, vaultAddress, "token vault");
+
+      await token1.setBalance(new BN(1000), user);
+
+      // Send tokens tx
+      await web3.eth.sendTransaction({
+        from: user,
+        to: token1.address,
+        data: orderTx,
+        gasPrice: 0
+      });
+
+      await vaultSnap.requireIncrease(new BN(1000));
+
+      // Take balance snapshots
+      const exToken1Snap = await balanceSnap(token1, uniswapEx.address, "Uniswap EX");
+      const exToken2Snap = await balanceSnap(token1, uniswapEx.address, "Uniswap EX");
+      const exEtherSnap = await balanceSnap(token1, uniswapEx.address, "Uniswap EX");
+      const executerEtherSnap = await etherSnap(anotherUser, "executer");
+      const uniswap1TokenSnap = await balanceSnap(token1, uniswapToken1.address, "uniswap");
+      const uniswap2TokenSnap = await balanceSnap(token2, uniswapToken2.address, "uniswap");
+      const userToken2Snap = await balanceSnap(token2, user, "user");
+
+      // Execute order
+      const tx = await uniswapEx.execute(
+        token1.address, // Sell token 1
+        token2.address, // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay 9 WEI to sender
+        user,           // Owner of the order
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      );
+
+      const bought = tx.logs[0].args._bought;
+
+      // Validate balances
+      await exEtherSnap.requireConstant();
+      await exToken1Snap.requireConstant();
+      await exToken2Snap.requireConstant();
+      await vaultSnap.requireConstant();
+      await executerEtherSnap.requireIncrease(new BN(9));
+      await uniswap1TokenSnap.requireIncrease(new BN(1000));
+      await uniswap2TokenSnap.requireDecrease(bought);
+      await userToken2Snap.requireIncrease(bought);
     });
   });
   describe('Get vault', function () {
