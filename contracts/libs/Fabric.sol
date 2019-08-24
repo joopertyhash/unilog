@@ -31,7 +31,6 @@ library Fabric {
     * @dev Create deterministic vault.
     */
     function executeVault(bytes32 _key, IERC20 _token, address _to) internal {
-        require(_token.balanceOf(getVault(_key)) > 0, "Vault has no balance");
         address addr;
         bytes memory slotcode = type(Vault).creationCode;
 

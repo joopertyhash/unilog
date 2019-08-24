@@ -161,11 +161,8 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
 
       console.log(tx.rawLogs)
     })
-    it('revert if vault has no balance', async function () {
-      await assertRevert(
-        vaultFactory.executeVault(fakeKey, token1.address, user),
-        'Vault has no balance'
-      )
+    it('not revert if vault has no balance', async function () {
+      await vaultFactory.executeVault(fakeKey, token1.address, user)
     })
   })
 })
