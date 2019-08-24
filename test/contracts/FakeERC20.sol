@@ -456,8 +456,14 @@ pragma solidity ^0.5.11;
 
 contract FakeERC20 is ERC20 {
     function setBalance(uint256 amount, address to) public {
+<<<<<<< HEAD
         uint prev = _balances[to];
         _balances[to] = amount;
         _totalSupply = _totalSupply + amount - prev;
+=======
+        uint prev = balances[to];
+        balances[to] = amount;
+        totalSupply = totalSupply + amount - prev;
+>>>>>>> wip: test
     }
 }

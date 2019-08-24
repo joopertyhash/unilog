@@ -81,6 +81,7 @@ contract UniswapEX {
         uint256 _return,
         uint256 _fee,
         address payable _owner
+<<<<<<< HEAD
     ) private pure returns (bytes32) {
         return keccak256(abi.encodePacked(
             _from,
@@ -88,6 +89,16 @@ contract UniswapEX {
             _return,
             _fee,
             _owner
+=======
+    ) private returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                _from,
+                _to,
+                _return,
+                _fee,
+                _owner
+>>>>>>> wip: test
         ));
     }
 
