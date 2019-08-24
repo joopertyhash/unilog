@@ -12,7 +12,20 @@ contract UniswapEX {
     using SafeMath for uint256;
     using Fabric for bytes32;
 
-    event DepositETH(uint256 _amount, bytes _data);
+    event DepositETH(
+        uint256 _amount,
+        bytes _data
+    );
+
+    event Executed(
+        address _from,
+        address _to,
+        uint256 _amount,
+        uint256 _bought,
+        uint256 _fee,
+        address _owner,
+        address _relayer
+    );
 
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint256 private constant never = uint(-1);
@@ -21,6 +34,10 @@ contract UniswapEX {
 
     mapping(bytes32 => uint256) public ethDeposits;
 
+    constructor(UniswapFactory _uniswapFactory) public {
+        uniswapFactory = _uniswapFactory;
+    }
+
     function _ethToToken(
         UniswapFactory _uniswapFactory,
         IERC20 _token,
@@ -28,6 +45,7 @@ contract UniswapEX {
         address _dest
     ) private returns (uint256) {
         UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+
         if (_dest != address(this)) {
             return uniswap.ethToTokenTransferInput.value(_amount)(1, never, _dest);
         } else {
@@ -56,9 +74,9 @@ contract UniswapEX {
 
         // Execute the trade
         if (_dest != address(this)) {
-            uniswap.tokenToEthTransferInput(_amount, 1, never, _dest);
+            return uniswap.tokenToEthTransferInput(_amount, 1, never, _dest);
         } else {
-            uniswap.tokenToEthSwapInput(_amount, 1, never);
+            return uniswap.tokenToEthSwapInput(_amount, 1, never);
         }
     }
 
@@ -82,13 +100,52 @@ contract UniswapEX {
         uint256 _fee,
         address payable _owner
     ) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
+        return keccak256(
+            abi.encode(
+                _from,
+                _to,
+                _return,
+                _fee,
+                _owner
+            )
+        );
+    }
+
+    function encode(
+        address _from,
+        address _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) external view returns (bytes memory) {
+        return abi.encode(
             _from,
             _to,
             _return,
             _fee,
             _owner
-        ));
+        );
+    }
+
+    function decode(
+        bytes calldata _data
+    ) external view returns (
+        address _from,
+        address _to,
+        uint256 _return,
+        uint256 _fee,
+        address payable _owner
+    ) {
+        (
+            _from,
+            _to,
+            _return,
+            _fee,
+            _owner
+        ) = abi.decode(
+            _data,
+            (address, address, uint256, uint256, address)
+        );
     }
 
     function exists(
@@ -205,30 +262,41 @@ contract UniswapEX {
 
         // Pull amount
         uint256 amount = _pull(_from, key);
+        uint256 bought;
 
         if (address(_from) == ETH_ADDRESS) {
             // Keep some eth for paying the fee
             uint256 sell = amount.sub(_fee);
-            uint256 bought = _ethToToken(uniswapFactory, _from, sell, _owner);
-            require(bought >= _return, "sell return is not enought");
-            _owner.transfer(_fee);
+            bought = _ethToToken(uniswapFactory, _to, sell, _owner);
+            msg.sender.transfer(_fee);
         } else if (address(_to) == ETH_ADDRESS) {
             // Convert
-            uint256 bought = _tokenToEth(uniswapFactory, _to, amount, address(this));
-            require(bought >= _return.add(_fee), "sell return is not enought");
+            bought = _tokenToEth(uniswapFactory, _from, amount, address(this));
+            bought = bought.sub(_fee);
 
             // Send fee and amount bought
             msg.sender.transfer(_fee);
-            _owner.transfer(bought.sub(_fee));
+            _owner.transfer(bought);
         } else {
             // Convert from FromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _from, amount, address(this));
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _to, amount, address(this));
             msg.sender.transfer(_fee);
 
             // Convert from ETH to ToToken
-            uint256 boughtToken = _ethToToken(uniswapFactory, _to, boughtEth.sub(_fee), _owner);
-            require(boughtToken >= _return, "sell return is not enought");
+            bought = _ethToToken(uniswapFactory, _from, boughtEth.sub(_fee), _owner);
         }
+
+        require(bought >= _return, "sell return is not enought");
+
+        emit Executed(
+            address(_from),
+            address(_to),
+            amount,
+            bought,
+            _fee,
+            _owner,
+            msg.sender
+        );
     }
 
     function() external payable { }
