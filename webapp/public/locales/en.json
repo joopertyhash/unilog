@@ -84,5 +84,6 @@
   "enterTokenCont": "Enter a token address to continue",
   "priceChange": "Expected price slippage",
   "forAtLeast": "for at least ",
-  "place": "Place"
+  "place": "Place",
+  "placeAnyway": "Place anyway"
 }

@@ -58,12 +58,12 @@ const theme = darkMode => ({
   charcoalBlack: darkMode ? '#F2F2F2' : '#404040',
   // blues
   zumthorBlue: darkMode ? '#212529' : '#EBF4FF',
-  malibuBlue: darkMode ? '#E67AEF' : '#5CA2FF',
-  royalBlue: darkMode ? '#DC6BE5' : '#2F80ED',
+  malibuBlue: darkMode ? '#87c122' : '#87c122',
+  royalBlue: darkMode ? '#87c122' : '#2F80ED',
   loadingBlue: darkMode ? '#e4f0ff' : '#e4f0ff',
 
   // purples
-  wisteriaPurple: '#DC6BE5',
+  wisteriaPurple: darkMode ? '#87c122' : '#498227',
   // reds
   salmonRed: '#FF6871',
   // orange
@@ -71,7 +71,7 @@ const theme = darkMode => ({
   // yellows
   warningYellow: '#FFE270',
   // pink
-  uniswapPink: '#DC6BE5',
+  uniswapPink: darkMode ? '#87c122' :'#498227',
   connectedGreen: '#27AE60',
 
   //specific
@@ -96,14 +96,14 @@ export const GlobalStyle = createGlobalStyle`
   @supports (font-variation-settings: normal) {
     html { font-family: 'Inter var', sans-serif; }
   }
-  
+
   html,
   body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;    
+    overflow: hidden;
   }
 
   body > div {
