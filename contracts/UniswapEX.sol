@@ -187,17 +187,19 @@ contract UniswapEX {
         address _to,
         uint256 _return,
         uint256 _fee,
-        address payable _owner
+        address payable _owner,
+        bytes32 _salt
     ) {
         (
             _from,
             _to,
             _return,
             _fee,
-            _owner
+            _owner,
+            _salt
         ) = abi.decode(
             _data,
-            (address, address, uint256, uint256, address)
+            (address, address, uint256, uint256, address, bytes32)
         );
     }
 
@@ -269,6 +271,7 @@ contract UniswapEX {
     function depositETH(
         bytes calldata _data
     ) external payable {
+        require(msg.value > 0, "No value provided");
         bytes32 key = keccak256(_data);
         ethDeposits[key] = ethDeposits[key].add(msg.value);
         emit DepositETH(msg.value, _data);

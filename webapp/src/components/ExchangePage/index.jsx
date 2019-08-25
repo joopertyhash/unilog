@@ -9,9 +9,7 @@ import styled from 'styled-components'
 
 import { Button } from '../../theme'
 import CurrencyInputPanel from '../CurrencyInputPanel'
-import AddressInputPanel from '../AddressInputPanel'
 import OversizedPanel from '../OversizedPanel'
-import TransactionDetails from '../TransactionDetails'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
 import { amountFormatter } from '../../utils'
 import { useUniswapExContract } from '../../hooks'
@@ -21,7 +19,11 @@ import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
 import { useAddressAllowance } from '../../contexts/Allowances'
 
+import './ExchangePage.css'
+
 let inputValue
+let hasFetchedOrders
+let orders = []
 
 const INPUT = 0
 const OUTPUT = 1
@@ -35,6 +37,7 @@ const ALLOWED_SLIPPAGE_DEFAULT = 100
 const TOKEN_ALLOWED_SLIPPAGE_DEFAULT = 100
 
 const ETHER_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+const UNISWAP_EX_TRANSFER_TX_LENGTH = 138
 
 const DownArrowBackground = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -238,14 +241,36 @@ function getMarketRate(
   }
 }
 
+async function fetchUserOrders(account, contract) {
+  hasFetchedOrders = true
+  const res = await fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8414292&sort=asc&apikey=`)
+  const {message, result} = await res.json()
+  if (message === 'OK') {
+    // eslint-disable-next-line
+    for (let { hash } of result) {
+      const res = await fetch(`https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${hash}&apikey=`)
+      const { result } = await res.json()
+      // @TODO: UAF - please change it, shame on you Nacho.
+      if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > UNISWAP_EX_TRANSFER_TX_LENGTH) {
+        const order = await contract.decode(`0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`)
+        orders.push(order)
+      }
+    }
+  }
+}
+
 export default function ExchangePage({ initialCurrency, sending }) {
   const { t } = useTranslation()
   const { account} = useWeb3Context()
+  const contract = useUniswapExContract()
 
+  if (!hasFetchedOrders) {
+    fetchUserOrders(account, contract)
+  }
   const addTransaction = useTransactionAdder()
 
-  const [rawSlippage, setRawSlippage] = useState(ALLOWED_SLIPPAGE_DEFAULT)
-  const [rawTokenSlippage, setRawTokenSlippage] = useState(TOKEN_ALLOWED_SLIPPAGE_DEFAULT)
+  const [rawSlippage] = useState(ALLOWED_SLIPPAGE_DEFAULT)
+  const [rawTokenSlippage] = useState(TOKEN_ALLOWED_SLIPPAGE_DEFAULT)
 
   const allowedSlippageBig = ethers.utils.bigNumberify(rawSlippage)
   const tokenAllowedSlippageBig = ethers.utils.bigNumberify(rawTokenSlippage)
@@ -260,8 +285,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
 
   const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency } = swapState
 
-  const [recipient, setRecipient] = useState({ address: '', name: '' })
-  const [recipientError, setRecipientError] = useState()
+  const [recipientError] = useState()
 
   // get swap type from the currency types
   const swapType = getSwapType(inputCurrency, outputCurrency)
@@ -273,8 +297,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
   const { symbol: outputSymbol, decimals: outputDecimals } = useTokenDetails(
     outputCurrency
   )
-
-  const contract = useUniswapExContract()
 
   // get input allowance
   const inputAllowance = useAddressAllowance(account, inputCurrency, inputExchangeAddress)
@@ -332,7 +354,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   }, [independentValue, independentDecimals, t])
 
   // calculate slippage from target rate
-  const { minimum: dependentValueMinumum, maximum: dependentValueMaximum } = calculateSlippageBounds(
+  const { maximum: dependentValueMaximum } = calculateSlippageBounds(
     dependentValue,
     swapType === TOKEN_TO_TOKEN,
     tokenAllowedSlippageBig,
@@ -345,16 +367,9 @@ export default function ExchangePage({ initialCurrency, sending }) {
   useEffect(() => {
     const inputValueCalculation = independentField === INPUT ? independentValueParsed : dependentValueMaximum
     if (inputBalance && (inputAllowance || inputCurrency === 'ETH') && inputValueCalculation) {
-      // if (inputBalance.lt(inputValueCalculation)) {
-      //   setInputError(t('insufficientBalance'))
-      // } else if (inputCurrency !== 'ETH' && inputAllowance.lt(inputValueCalculation)) {
-      //   setInputError(t('unlockTokenCont'))
-      //   setShowUnlock(true)
-      // } else {
+        // @TODO: revisit this maybe I can remove the two lines below
         setInputError(null)
         setShowUnlock(false)
-     // }
-
       return () => {
         setInputError()
         setShowUnlock(false)
@@ -496,11 +511,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
           .div(marketRate)
           .sub(ethers.utils.bigNumberify(3).mul(ethers.utils.bigNumberify(10).pow(ethers.utils.bigNumberify(15))))
       : undefined
-  const percentSlippageFormatted = percentSlippage && amountFormatter(percentSlippage, 16, 2)
-  const slippageWarning =
-    percentSlippage &&
-    percentSlippage.gte(ethers.utils.parseEther('.05')) &&
-    percentSlippage.lt(ethers.utils.parseEther('.2')) // [5% - 20%)
+
   const highSlippageWarning = percentSlippage && percentSlippage.gte(ethers.utils.parseEther('.2')) // [20+%
 
   const isValid = sending
@@ -560,7 +571,14 @@ export default function ExchangePage({ initialCurrency, sending }) {
     }
   }
 
-  const [customSlippageError, setcustomSlippageError] = useState('')
+  async function onCancel(order) {
+    //@TODO: missing salt
+    const { _from, _to, _return, _fee, _owner} = order
+    const tx = await contract.cancel( _from, _to, _return, _fee, _owner, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
+    addTransaction(tx)
+  }
+
+  const [customSlippageError] = useState('')
 
   const allBalances = useFetchAllBalances()
 
@@ -623,18 +641,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
         errorMessage={independentField === OUTPUT ? independentError : ''}
         disableUnlock
       />
-      {sending ? (
-        <>
-          <OversizedPanel>
-            <DownArrowBackground>
-              <DownArrow active={isValid} alt="arrow" />
-            </DownArrowBackground>
-          </OversizedPanel>
-          <AddressInputPanel onChange={setRecipient} onError={setRecipientError} />
-        </>
-      ) : (
-        ''
-      )}
       <OversizedPanel hideBottom>
         <ExchangeRateWrapper
           onClick={() => {
@@ -657,34 +663,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
           )}
         </ExchangeRateWrapper>
       </OversizedPanel>
-      <TransactionDetails
-        account={account}
-        setRawSlippage={setRawSlippage}
-        setRawTokenSlippage={setRawTokenSlippage}
-        rawSlippage={rawSlippage}
-        slippageWarning={slippageWarning}
-        highSlippageWarning={highSlippageWarning}
-        inputError={inputError}
-        independentError={independentError}
-        inputCurrency={inputCurrency}
-        outputCurrency={outputCurrency}
-        independentValue={independentValue}
-        independentValueParsed={independentValueParsed}
-        independentField={independentField}
-        INPUT={INPUT}
-        inputValueParsed={inputValueParsed}
-        outputValueParsed={outputValueParsed}
-        inputSymbol={inputSymbol}
-        outputSymbol={outputSymbol}
-        dependentValueMinumum={dependentValueMinumum}
-        dependentValueMaximum={dependentValueMaximum}
-        dependentDecimals={dependentDecimals}
-        independentDecimals={independentDecimals}
-        percentSlippageFormatted={percentSlippageFormatted}
-        setcustomSlippageError={setcustomSlippageError}
-        recipientAddress={recipient.address}
-        sending={sending}
-      />
       <Flex>
         <Button
           disabled={!isValid || customSlippageError === 'invalid'}
@@ -696,6 +674,21 @@ export default function ExchangePage({ initialCurrency, sending }) {
             : t('place')}
         </Button>
       </Flex>
+      <div>
+          <h2>{t('Orders')}</h2>
+          <div>
+            {orders.map((order, index) => <div key={index} className="order">
+              <p>{`fromToken: ${order._from}`}</p>
+              <p>{`toToken: ${order._to}`}</p>
+              {/* <p>{`amount: ${order._amou}`}</p> */}
+              <p>{`return: ${ethers.utils.formatUnits(order._return, 18)}`}</p>
+              <p>{`fee: ${ethers.utils.formatUnits(order._fee, 18)}`}</p>
+              <Button onClick={() => onCancel(order)}>
+              {t('cancel')}
+            </Button>
+            </div>)}
+          </div>
+      </div>
     </>
   )
 }

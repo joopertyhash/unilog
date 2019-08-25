@@ -1,0 +1,27 @@
+.order {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-flex-flow: column nowrap;
+  -ms-flex-flow: column nowrap;
+  flex-flow: column nowrap;
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.05);
+  position: relative;
+  border-radius: 1.25rem;
+  background-color: #202124;
+  z-index: 1;
+  padding: 20px;
+  margin-bottom: 40px;
+}
+
+.order p {
+  font-size: 14px;
+  color: #C4C4C4;
+  margin: 3px 0;
+}
+
+.order button {
+  max-width: 50%;
+  margin: auto;
+}
