@@ -21,7 +21,6 @@ import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
 import { useAddressAllowance } from '../../contexts/Allowances'
 
-
 let inputValue
 
 const INPUT = 0
@@ -241,8 +240,8 @@ function getMarketRate(
 
 export default function ExchangePage({ initialCurrency, sending }) {
   const { t } = useTranslation()
-  const { account } = useWeb3Context()
-  console.log(ethers)
+  const { account} = useWeb3Context()
+
   const addTransaction = useTransactionAdder()
 
   const [rawSlippage, setRawSlippage] = useState(ALLOWED_SLIPPAGE_DEFAULT)
@@ -514,7 +513,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   }
 
   async function onSwap() {
-    let method, fromCurrency, toCurrency, data, amount, minimumReturn, value
+    let method, fromCurrency, toCurrency, data, amount, minimumReturn
 
     ReactGA.event({
       category: 'place',
@@ -533,27 +532,24 @@ export default function ExchangePage({ initialCurrency, sending }) {
       method = contract.encode
       fromCurrency = ETHER_ADDRESS
       toCurrency = outputCurrency
-      value = amount
     } else if (swapType === TOKEN_TO_ETH) {
       method = contract.encodeTokenOrder
       fromCurrency = inputCurrency
       toCurrency = ETHER_ADDRESS
-      value = 0
     } else if (swapType === TOKEN_TO_TOKEN) {
       method = contract.encodeTokenOrder
       fromCurrency = inputCurrency
       toCurrency = outputCurrency
-      value = 0
     }
     try {
       data = await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
-
-      const res = await (swapType === ETH_TO_TOKEN ? contract.depositETH(data) : ethers.Wallet.sendTransaction({
-          from: account,
-          to: fromCurrency,
-          data,
-          value
-      }))
+      const res = await (swapType === ETH_TO_TOKEN ? contract.depositETH(data, {value: amount}) : new Promise((res) => window.web3.eth.sendTransaction({
+        from: account,
+        to: fromCurrency,
+        data
+    }, (err, hash) => {
+      res({ err, hash})
+    })))
 
       if(res.hash) {
         addTransaction(res)
