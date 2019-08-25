@@ -4,7 +4,7 @@ import { balanceSnap, etherSnap } from './helpers/balanceSnap'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const UniswapEx = artifacts.require('UniswapEx')
+const UniswapEx = artifacts.require('UniswapEX')
 const ERC20 = artifacts.require('FakeERC20')
 const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
 const UniswapFactory = artifacts.require('UniswapFactory')
