@@ -56,4 +56,4 @@ else
 fi
 
 
-../node_modules/.bin/truffle test
+truffle test

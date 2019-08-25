@@ -4,7 +4,7 @@ import { balanceSnap, etherSnap } from './helpers/balanceSnap'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const UniswapEx = artifacts.require('UniswapEx')
+const UniswapEx = artifacts.require('UniswapEX')
 const ERC20 = artifacts.require('FakeERC20')
 const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
 const UniswapFactory = artifacts.require('UniswapFactory')
@@ -322,9 +322,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
     it('should return correct vault', async function () {
       const address = await vaultFactory.getVault(fakeKey)
       await token1.setBalance(ONE_ETH, address)
-      const tx = await vaultFactory.executeVault(fakeKey, token1.address, user)
-
-      console.log(tx.rawLogs)
+      await vaultFactory.executeVault(fakeKey, token1.address, user)
     })
     it('not revert if vault has no balance', async function () {
       await vaultFactory.executeVault(fakeKey, token1.address, user)
