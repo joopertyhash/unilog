@@ -10,7 +10,6 @@ const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
 const UniswapFactory = artifacts.require('UniswapFactory')
 const UniswapExchange = artifacts.require('UniswapExchange')
 const VaultFactory = artifacts.require('VaultFactory')
-const Vault = artifacts.require('Vault')
 
 function buildCreate2Address(creatorAddress, saltHex, byteCode) {
   return `0x${web3.utils
@@ -48,6 +47,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   const anotherFakeKey = web3.utils.sha3('0x02')
   const ONE_ETH = new BN(1)
   const FIXED_SALT = "0xf9fea21bcccd3d13caa0d7f67bc4bd0776a06c420e932ee5add8f3affb3f354b";
+  const CRATIONCODE_VAULT = "0x6012600081600a8239f3600080604480828037818060383580F132ff";
 
   // Contracts
   let token1
@@ -300,7 +300,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       const expectedAddress = buildCreate2Address(
         vaultFactory.address,
         fakeKey,
-        Vault.bytecode
+        CRATIONCODE_VAULT
       )
       expect(address).to.not.be.equal(zeroAddress)
       expect(address).to.be.equal(expectedAddress)
