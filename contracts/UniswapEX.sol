@@ -169,7 +169,7 @@ contract UniswapEX {
         uint256 _fee,
         address payable _owner,
         bytes32 _salt
-    ) external view returns (bytes memory) {
+    ) external pure returns (bytes memory) {
         return abi.encode(
             _from,
             _to,
@@ -182,7 +182,7 @@ contract UniswapEX {
 
     function decode(
         bytes calldata _data
-    ) external view returns (
+    ) external pure returns (
         address _from,
         address _to,
         uint256 _return,
