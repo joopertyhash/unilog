@@ -109,7 +109,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
   describe('It should trade on Uniswap', async function() {
     it('should execute buy tokens with ETH', async () => {
       // Create order
-      const encodedOrder = await uniswapEx.encodeETHOrder(
+      const encodedOrder = await uniswapEx.encodeEthOrder(
         ethAddress, // Sell ETH
         token1.address, // Buy TOKEN 1
         new BN(300), // Get at least 300 Tokens

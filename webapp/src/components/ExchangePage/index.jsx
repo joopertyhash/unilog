@@ -266,12 +266,15 @@ async function fetchUserOrders(account, contract, setInputError) {
         }
       }
     }
+
+    // @TODO: deposit eth orders
+    // Deposit ETH orders
+    // TOPIC0: 0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7
   } catch (e) {
     console.log(`Error when fetching open orders: ${e.message}`)
   }
   isFetchingOrders = false
   setInputError(null) // Hack to update the estates, should be removed
-  console.log('aaaaaa', isFetchingOrders)
 }
 
 export default function ExchangePage({ initialCurrency, sending }) {
@@ -541,8 +544,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   }
 
   async function onSwap() {
-    let method, fromCurrency, toCurrency, amount, minimumReturn
-    let data = ''
+    let method, fromCurrency, toCurrency, amount, minimumReturn, data
 
     ReactGA.event({
       category: 'place',
@@ -558,10 +560,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
     }
 
     if (swapType === ETH_TO_TOKEN) {
+      //@TODO: change it later
       method = contract.encodeETHOrder
       fromCurrency = ETHER_ADDRESS
       toCurrency = outputCurrency
-      data = contract.encodeETHOrder.selector
     } else if (swapType === TOKEN_TO_ETH) {
       method = contract.encodeTokenOrder
       fromCurrency = inputCurrency
@@ -572,15 +574,15 @@ export default function ExchangePage({ initialCurrency, sending }) {
       toCurrency = outputCurrency
     }
     try {
-      data += await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
-      const res = await new Promise((res) => window.web3.eth.sendTransaction({
+      data = await (swapType === ETH_TO_TOKEN ?  method(fromCurrency, toCurrency, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
+      : await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32))))
+      const res = await (swapType === ETH_TO_TOKEN ?  contract.depositEth(data, { value: amount }) : new Promise((res) => window.web3.eth.sendTransaction({
         from: account,
         to: fromCurrency,
-        value: amount,
-        data,
+        data
     }, (err, hash) => {
       res({ err, hash})
-    }))
+    })))
 
       if(res.hash) {
         addTransaction(res)
@@ -698,28 +700,33 @@ export default function ExchangePage({ initialCurrency, sending }) {
           {isFetchingOrders ? t('fetchingOrders') :
             orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
             <div>
-              {orders.map((order, index) => <div key={index} className="order">
+              {orders.map((order, index) => {
+                const fromToken = order.fromToken === ETHER_ADDRESS ? 'ETH' : order.fromToken
+                const toToken = order.toToken === ETHER_ADDRESS ? 'ETH' : order.toToken
+
+                return (<div key={index} className="order">
                 <div className="tokens">
                   <CurrencySelect
                       selected={true}
                     >
                     <Aligner>
-                      {<TokenLogo address={order.fromToken} />}
+                      {<TokenLogo address={fromToken} />}
                       {
                         <StyledTokenName>
-                          {(allTokens[order.fromToken] && allTokens[order.fromToken].symbol) || order.fromToken}
+                          {(allTokens[fromToken] && allTokens[fromToken].symbol) || fromToken}
                         </StyledTokenName>
                       }
                     </Aligner>
                   </CurrencySelect>
+                  <Aligner>{'->'}</Aligner>
                   <CurrencySelect
                       selected={true}
                     >
                     <Aligner>
-                      {<TokenLogo address={order.toToken} />}
+                      {<TokenLogo address={toToken} />}
                       {
                         <StyledTokenName>
-                          {(allTokens[order.toToken] && allTokens[order.toToken].symbol) || order.toToken}
+                          {(allTokens[toToken] && allTokens[toToken].symbol) || toToken}
                         </StyledTokenName>
                       }
                     </Aligner>
@@ -730,7 +737,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
                 <Button onClick={() => onCancel(order)}>
                   {t('cancel')}
                 </Button>
-              </div>)
+                </div>)}
+                    )
             }
           </div>}
       </div>

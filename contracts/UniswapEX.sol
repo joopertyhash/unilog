@@ -196,7 +196,7 @@ contract UniswapEX {
         );
     }
 
-    function encodeETHOrder(
+    function encodeEthOrder(
         address _fromToken,
         address _toToken,
         uint256 _minReturn,

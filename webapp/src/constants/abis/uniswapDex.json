@@ -2,41 +2,9 @@
   {
     "constant": true,
     "inputs": [
-      { "internalType": "address", "name": "_from", "type": "address" },
-      { "internalType": "address", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
-      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
-      { "internalType": "address payable", "name": "_owner", "type": "address" },
-      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
-    ],
-    "name": "encode",
-    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
-      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
-      { "internalType": "address payable", "name": "_owner", "type": "address" },
-      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
-    ],
-    "name": "cancel",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
@@ -48,16 +16,41 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [{ "internalType": "bytes", "name": "_data", "type": "bytes" }],
+    "name": "depositEth",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
+      { "internalType": "address", "name": "_fromToken", "type": "address" },
+      { "internalType": "address", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
     ],
-    "name": "exists",
+    "name": "encodeETHOrder",
+    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
+    "payable": false,
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
+      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
+      { "internalType": "address payable", "name": "_owner", "type": "address" },
+      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
+    ],
+    "name": "existOrder",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "payable": false,
     "stateMutability": "view",
@@ -66,10 +59,10 @@
   {
     "constant": true,
     "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
       { "internalType": "uint256", "name": "_amount", "type": "uint256" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
@@ -78,6 +71,22 @@
     "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
+      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
+      { "internalType": "address payable", "name": "_owner", "type": "address" },
+      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
+    ],
+    "name": "executeOrder",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -99,43 +108,35 @@
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [{ "internalType": "bytes", "name": "_data", "type": "bytes" }],
+    "name": "decodeOrder",
+    "outputs": [
+      { "internalType": "address", "name": "fromToken", "type": "address" },
+      { "internalType": "address", "name": "toToken", "type": "address" },
+      { "internalType": "uint256", "name": "minReturn", "type": "uint256" },
+      { "internalType": "uint256", "name": "fee", "type": "uint256" },
+      { "internalType": "address payable", "name": "owner", "type": "address" },
+      { "internalType": "bytes32", "name": "salt", "type": "bytes32" }
+    ],
+    "payable": false,
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
     ],
-    "name": "execute",
+    "name": "cancelOrder",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [{ "internalType": "bytes", "name": "_data", "type": "bytes" }],
-    "name": "depositETH",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [{ "internalType": "bytes", "name": "_data", "type": "bytes" }],
-    "name": "decode",
-    "outputs": [
-      { "internalType": "address", "name": "_from", "type": "address" },
-      { "internalType": "address", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
-      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
-      { "internalType": "address payable", "name": "_owner", "type": "address" }
-    ],
-    "payable": false,
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -150,9 +151,9 @@
   {
     "constant": true,
     "inputs": [
-      { "internalType": "contract IERC20", "name": "_from", "type": "address" },
-      { "internalType": "contract IERC20", "name": "_to", "type": "address" },
-      { "internalType": "uint256", "name": "_return", "type": "uint256" },
+      { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
+      { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
@@ -182,16 +183,33 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": false, "internalType": "address", "name": "_from", "type": "address" },
-      { "indexed": false, "internalType": "address", "name": "_to", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "_amount", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "_bought", "type": "uint256" },
+      { "indexed": true, "internalType": "bytes32", "name": "_key", "type": "bytes32" },
+      { "indexed": false, "internalType": "address", "name": "_fromToken", "type": "address" },
+      { "indexed": false, "internalType": "address", "name": "_toToken", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "_fee", "type": "uint256" },
       { "indexed": false, "internalType": "address", "name": "_owner", "type": "address" },
       { "indexed": false, "internalType": "bytes32", "name": "_salt", "type": "bytes32" },
-      { "indexed": false, "internalType": "address", "name": "_relayer", "type": "address" }
+      { "indexed": false, "internalType": "address", "name": "_relayer", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "_amount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "_bought", "type": "uint256" }
     ],
-    "name": "Executed",
+    "name": "OrderExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "_key", "type": "bytes32" },
+      { "indexed": false, "internalType": "address", "name": "_fromToken", "type": "address" },
+      { "indexed": false, "internalType": "address", "name": "_toToken", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "_fee", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "_owner", "type": "address" },
+      { "indexed": false, "internalType": "bytes32", "name": "_salt", "type": "bytes32" },
+      { "indexed": false, "internalType": "uint256", "name": "_amount", "type": "uint256" }
+    ],
+    "name": "OrderCancelled",
     "type": "event"
   }
 ]

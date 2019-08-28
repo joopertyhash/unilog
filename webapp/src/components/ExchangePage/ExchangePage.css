@@ -25,3 +25,14 @@
   max-width: 50%;
   margin: auto;
 }
+
+.tokens {
+  margin-bottom: 15px;
+}
+
+.tokens > span {
+  width: 40px;
+  margin: 0;
+  display: inline-block;
+  text-align: center;
+}
