@@ -39,7 +39,8 @@ const ALLOWED_SLIPPAGE_DEFAULT = 100
 const TOKEN_ALLOWED_SLIPPAGE_DEFAULT = 100
 
 const ETHER_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
-const UNISWAP_EX_TRANSFER_TX_LENGTH = 138
+const TRANSFER_TX_LENGTH = 138
+const TX_PADDED_BYTES_BOILERPLATE = 128
 
 const DownArrowBackground = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -246,35 +247,61 @@ function getMarketRate(
 async function fetchUserOrders(account, contract, setInputError) {
   // @TODO: move this to "useFetchUserOrders"
   hasFetchedOrders = true
+
+  const ordersAdded = {}
   try {
-    const res = await fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8414292&sort=asc&apikey=`)
-    const {message, result} = await res.json()
-    if (message === 'OK') {
+    const [transfers, deposits] = await Promise.all([
+      fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8439826&sort=asc&apikey=`),
+      fetch(`https://api.etherscan.io/api?module=logs&action=getLogs&fromBlock=8439826&toBlock=latest&address=${contract.address}&topic0=0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7&apikey=`)
+    ])
+
+    // Transfers
+    const transfersResults = await transfers.json()
+    if (transfersResults.message === 'OK') {
       // eslint-disable-next-line
-      for (let { hash } of result) {
+      for (let { hash } of transfersResults.result) {
         const res = await fetch(`https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${hash}&apikey=`)
         const { result } = await res.json()
         // @TODO: UAF - please change it, shame on you Nacho
         // Check if the extra data is related to an order
-        if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > UNISWAP_EX_TRANSFER_TX_LENGTH) {
-          const orderData = `0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`
-          const { fromToken, toToken, minReturn, fee, owner, salt} = await contract.decodeOrder(orderData)
-          const existOrder = await contract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
-          if (existOrder) {
-            orders.push({ fromToken, toToken, minReturn, fee, owner, salt})
+        if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > TRANSFER_TX_LENGTH) {
+          const orderData = `0x${result.input.substr(TRANSFER_TX_LENGTH + TX_PADDED_BYTES_BOILERPLATE, result.input.length)}`
+          const order = await decodeOrder(contract, orderData)
+          if(order && !ordersAdded[orderData]) {
+            orders.push(order)
+            ordersAdded[orderData] = true
           }
         }
       }
     }
 
-    // @TODO: deposit eth orders
     // Deposit ETH orders
-    // TOPIC0: 0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7
+    const depositsResults = await deposits.json()
+    if (depositsResults.message === 'OK') {
+      // eslint-disable-next-line
+      for (let { data } of depositsResults.result) {
+        const eventBoilerplate = 66
+        const orderData = `0x${data.substr(eventBoilerplate + TX_PADDED_BYTES_BOILERPLATE, data.length)}`
+        const order = await decodeOrder(contract, orderData)
+        if(order && !ordersAdded[orderData]) {
+          orders.push(order)
+          ordersAdded[orderData] = true
+        }
+      }
+    }
   } catch (e) {
     console.log(`Error when fetching open orders: ${e.message}`)
   }
   isFetchingOrders = false
   setInputError(null) // Hack to update the estates, should be removed
+}
+
+async function decodeOrder(contract, data) {
+  const { fromToken, toToken, minReturn, fee, owner, salt} = await contract.decodeOrder(data)
+  const existOrder = await contract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
+  if (existOrder) {
+    return {fromToken, toToken, minReturn, fee, owner, salt}
+  }
 }
 
 export default function ExchangePage({ initialCurrency, sending }) {
