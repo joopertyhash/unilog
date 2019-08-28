@@ -216,7 +216,7 @@ contract UniswapEX {
 
     function decodeOrder(
         bytes calldata _data
-    ) external view returns (
+    ) external pure returns (
         address fromToken,
         address toToken,
         uint256 minReturn,
