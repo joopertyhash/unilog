@@ -252,7 +252,7 @@ async function fetchUserOrders(account, contract) {
       const { result } = await res.json()
       // @TODO: UAF - please change it, shame on you Nacho.
       if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > UNISWAP_EX_TRANSFER_TX_LENGTH) {
-        const order = await contract.decode(`0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`)
+        const order = await contract. (`0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`)
         orders.push(order)
       }
     }
@@ -524,7 +524,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
   }
 
   async function onSwap() {
-    let method, fromCurrency, toCurrency, data, amount, minimumReturn
+    let method, fromCurrency, toCurrency, amount, minimumReturn
+    let data = ''
 
     ReactGA.event({
       category: 'place',
@@ -540,9 +541,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
     }
 
     if (swapType === ETH_TO_TOKEN) {
-      method = contract.encode
+      method = contract.encodeETHOrder
       fromCurrency = ETHER_ADDRESS
       toCurrency = outputCurrency
+      data = contract.encodeETHOrder.selector
     } else if (swapType === TOKEN_TO_ETH) {
       method = contract.encodeTokenOrder
       fromCurrency = inputCurrency
@@ -553,14 +555,15 @@ export default function ExchangePage({ initialCurrency, sending }) {
       toCurrency = outputCurrency
     }
     try {
-      data = await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
-      const res = await (swapType === ETH_TO_TOKEN ? contract.depositETH(data, {value: amount}) : new Promise((res) => window.web3.eth.sendTransaction({
+      data += await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
+      const res = await new Promise((res) => window.web3.eth.sendTransaction({
         from: account,
         to: fromCurrency,
-        data
+        value: amount,
+        data,
     }, (err, hash) => {
       res({ err, hash})
-    })))
+    }))
 
       if(res.hash) {
         addTransaction(res)
@@ -572,9 +575,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
   }
 
   async function onCancel(order) {
-    //@TODO: missing salt
-    const { _from, _to, _return, _fee, _owner} = order
-    const tx = await contract.cancel( _from, _to, _return, _fee, _owner, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
+    const { fromToken, toToken, minReturn, fee, owner, salt} = order
+    const tx = await contract.cancelOrder( fromToken, toToken, minReturn, fee, owner, salt)
     addTransaction(tx)
   }
 
@@ -678,11 +680,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
           <h2>{t('Orders')}</h2>
           <div>
             {orders.map((order, index) => <div key={index} className="order">
-              <p>{`fromToken: ${order._from}`}</p>
-              <p>{`toToken: ${order._to}`}</p>
-              {/* <p>{`amount: ${order._amou}`}</p> */}
-              <p>{`return: ${ethers.utils.formatUnits(order._return, 18)}`}</p>
-              <p>{`fee: ${ethers.utils.formatUnits(order._fee, 18)}`}</p>
+              <p>{`fromToken: ${order.fromToken}`}</p>
+              <p>{`toToken: ${order.toToken}`}</p>
+              <p>{`return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
+              <p>{`fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
               <Button onClick={() => onCancel(order)}>
               {t('cancel')}
             </Button>

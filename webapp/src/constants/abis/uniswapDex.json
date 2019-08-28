@@ -41,7 +41,7 @@
       { "internalType": "address payable", "name": "_owner", "type": "address" },
       { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
     ],
-    "name": "canFill",
+    "name": "canExecuteOrder",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "payable": false,
     "stateMutability": "view",
