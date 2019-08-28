@@ -8,12 +8,13 @@ import { ethers } from 'ethers'
 import styled from 'styled-components'
 
 import { Button } from '../../theme'
-import CurrencyInputPanel from '../CurrencyInputPanel'
+import CurrencyInputPanel, { CurrencySelect, Aligner, StyledTokenName }  from '../CurrencyInputPanel'
 import OversizedPanel from '../OversizedPanel'
+import TokenLogo from '../TokenLogo'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
 import { amountFormatter } from '../../utils'
 import { useUniswapExContract } from '../../hooks'
-import { useTokenDetails } from '../../contexts/Tokens'
+import { useTokenDetails, useAllTokenDetails } from '../../contexts/Tokens'
 import { useTransactionAdder } from '../../contexts/Transactions'
 import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
@@ -22,6 +23,7 @@ import { useAddressAllowance } from '../../contexts/Allowances'
 import './ExchangePage.css'
 
 let inputValue
+let isFetchingOrders = true
 let hasFetchedOrders
 let orders = []
 
@@ -241,31 +243,45 @@ function getMarketRate(
   }
 }
 
-async function fetchUserOrders(account, contract) {
+async function fetchUserOrders(account, contract, setInputError) {
+  // @TODO: move this to "useFetchUserOrders"
   hasFetchedOrders = true
-  const res = await fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8414292&sort=asc&apikey=`)
-  const {message, result} = await res.json()
-  if (message === 'OK') {
-    // eslint-disable-next-line
-    for (let { hash } of result) {
-      const res = await fetch(`https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${hash}&apikey=`)
-      const { result } = await res.json()
-      // @TODO: UAF - please change it, shame on you Nacho.
-      if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > UNISWAP_EX_TRANSFER_TX_LENGTH) {
-        const order = await contract. (`0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`)
-        orders.push(order)
+  try {
+    const res = await fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8414292&sort=asc&apikey=`)
+    const {message, result} = await res.json()
+    if (message === 'OK') {
+      // eslint-disable-next-line
+      for (let { hash } of result) {
+        const res = await fetch(`https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${hash}&apikey=`)
+        const { result } = await res.json()
+        // @TODO: UAF - please change it, shame on you Nacho
+        // Check if the extra data is related to an order
+        if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > UNISWAP_EX_TRANSFER_TX_LENGTH) {
+          const orderData = `0x${result.input.substr(UNISWAP_EX_TRANSFER_TX_LENGTH + 128, result.input.length)}`
+          const { fromToken, toToken, minReturn, fee, owner, salt} = await contract.decodeOrder(orderData)
+          const existOrder = await contract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
+          if (existOrder) {
+            orders.push({ fromToken, toToken, minReturn, fee, owner, salt})
+          }
+        }
       }
     }
+  } catch (e) {
+    console.log(`Error when fetching open orders: ${e.message}`)
   }
+  isFetchingOrders = false
+  setInputError(null) // Hack to update the estates, should be removed
+  console.log('aaaaaa', isFetchingOrders)
 }
 
 export default function ExchangePage({ initialCurrency, sending }) {
   const { t } = useTranslation()
   const { account} = useWeb3Context()
   const contract = useUniswapExContract()
+  const [inputError, setInputError] = useState()
 
   if (!hasFetchedOrders) {
-    fetchUserOrders(account, contract)
+    fetchUserOrders(account, contract, setInputError)
   }
   const addTransaction = useTransactionAdder()
 
@@ -297,6 +313,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
   const { symbol: outputSymbol, decimals: outputDecimals } = useTokenDetails(
     outputCurrency
   )
+  const allTokens = useAllTokenDetails()
+
 
   // get input allowance
   const inputAllowance = useAddressAllowance(account, inputCurrency, inputExchangeAddress)
@@ -362,7 +380,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
   )
 
   // validate input allowance + balance
-  const [inputError, setInputError] = useState()
   const [showUnlock, setShowUnlock] = useState(false)
   useEffect(() => {
     const inputValueCalculation = independentField === INPUT ? independentValueParsed : dependentValueMaximum
@@ -678,17 +695,44 @@ export default function ExchangePage({ initialCurrency, sending }) {
       </Flex>
       <div>
           <h2>{t('Orders')}</h2>
-          <div>
-            {orders.map((order, index) => <div key={index} className="order">
-              <p>{`fromToken: ${order.fromToken}`}</p>
-              <p>{`toToken: ${order.toToken}`}</p>
-              <p>{`return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
-              <p>{`fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
-              <Button onClick={() => onCancel(order)}>
-              {t('cancel')}
-            </Button>
-            </div>)}
-          </div>
+          {isFetchingOrders ? t('fetchingOrders') :
+            orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
+            <div>
+              {orders.map((order, index) => <div key={index} className="order">
+                <div className="tokens">
+                  <CurrencySelect
+                      selected={true}
+                    >
+                    <Aligner>
+                      {<TokenLogo address={order.fromToken} />}
+                      {
+                        <StyledTokenName>
+                          {(allTokens[order.fromToken] && allTokens[order.fromToken].symbol) || order.fromToken}
+                        </StyledTokenName>
+                      }
+                    </Aligner>
+                  </CurrencySelect>
+                  <CurrencySelect
+                      selected={true}
+                    >
+                    <Aligner>
+                      {<TokenLogo address={order.toToken} />}
+                      {
+                        <StyledTokenName>
+                          {(allTokens[order.toToken] && allTokens[order.toToken].symbol) || order.toToken}
+                        </StyledTokenName>
+                      }
+                    </Aligner>
+                  </CurrencySelect>
+                </div>
+                <p>{`Min return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
+                <p>{`Fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
+                <Button onClick={() => onCancel(order)}>
+                  {t('cancel')}
+                </Button>
+              </div>)
+            }
+          </div>}
       </div>
     </>
   )

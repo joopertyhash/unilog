@@ -18,11 +18,12 @@ contract UniswapEX {
     );
 
     event OrderExecuted(
-        address indexed _fromToken,
-        address indexed _toToken,
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
         uint256 _minReturn,
         uint256 _fee,
-        address indexed _owner,
+        address _owner,
         bytes32 _salt,
         address _relayer,
         uint256 _amount,
@@ -30,11 +31,12 @@ contract UniswapEX {
     );
 
     event OrderCancelled(
-        address indexed _fromToken,
-        address indexed _toToken,
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
         uint256 _minReturn,
         uint256 _fee,
-        address indexed _owner,
+        address _owner,
         bytes32 _salt,
         uint256 _amount
     );
@@ -56,7 +58,7 @@ contract UniswapEX {
         bytes calldata _data
     ) external payable {
         require(msg.value > 0, "No value provided");
-        // @TODO: check if fromToken and toToken are not equal both to ETH_ADDRESS
+        // @TODO: check if fromToken and toToken are both not equal to ETH_ADDRESS
 
         bytes32 key = keccak256(_data);
         ethDeposits[key] = ethDeposits[key].add(msg.value);
@@ -71,7 +73,7 @@ contract UniswapEX {
         address payable _owner,
         bytes32 _salt
     ) external {
-        require(msg.sender == _owner, "Only order owner can cancel");
+        require(msg.sender == _owner, "Only the owner of the order can cancel it");
         bytes32 key = _keyOf(
             _fromToken,
             _toToken,
@@ -91,6 +93,7 @@ contract UniswapEX {
         }
 
         emit OrderCancelled(
+            key,
             address(_fromToken),
             address(_toToken),
             _minReturn,
@@ -149,6 +152,7 @@ contract UniswapEX {
         require(bought >= _minReturn, "Tokens bought are not enough");
 
         emit OrderExecuted(
+            key,
             address(_fromToken),
             address(_toToken),
             _minReturn,

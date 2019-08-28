@@ -65,7 +65,7 @@ const StyledBorderlessInput = styled(BorderlessInput)`
   background-color: ${({ theme }) => theme.concreteGray};
 `
 
-const CurrencySelect = styled.button`
+export const CurrencySelect = styled.button`
   align-items: center;
   font-size: 1rem;
   color: ${({ selected, theme }) => (selected ? theme.textColor : theme.royalBlue)};
@@ -91,7 +91,7 @@ const CurrencySelect = styled.button`
   }
 `
 
-const Aligner = styled.span`
+export const Aligner = styled.span`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -256,7 +256,7 @@ const TokenRowRight = styled.div`
   align-items: flex-end;
 `
 
-const StyledTokenName = styled.span`
+export const StyledTokenName = styled.span`
   margin: 0 0.25rem 0 0.25rem;
 `
 

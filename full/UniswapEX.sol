@@ -1,4 +1,165 @@
 
+// File: contracts/commons/SafeMath.sol
+
+pragma solidity ^0.5.11;
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations with added overflow
+ * checks.
+ *
+ * Arithmetic operations in Solidity wrap on overflow. This can easily result
+ * in bugs, because programmers usually assume that an overflow raises an
+ * error, which is the standard behavior in high level programming languages.
+ * `SafeMath` restores this intuition by reverting the transaction when an
+ * operation overflows.
+ *
+ * Using this library instead of the unchecked operations eliminates an entire
+ * class of bugs, so it's recommended to use it always.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     * - Subtraction cannot overflow.
+     *
+     * NOTE: This is a feature of the next version of OpenZeppelin Contracts.
+     * @dev Get it via `npm install @openzeppelin/contracts@next`.
+     */
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     * NOTE: This is a feature of the next version of OpenZeppelin Contracts.
+     * @dev Get it via `npm install @openzeppelin/contracts@next`.
+     */
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts with custom message when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     *
+     * NOTE: This is a feature of the next version of OpenZeppelin Contracts.
+     * @dev Get it via `npm install @openzeppelin/contracts@next`.
+     */
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
+
 // File: contracts/interfaces/IERC20.sol
 
 pragma solidity ^0.5.11;
@@ -159,8 +320,8 @@ pragma solidity ^0.5.11;
 
 
 contract Vault {
-    constructor(IERC20 _token, address _to) payable public {
-        _token.transfer(_to, _token.balanceOf(address(this)));
+    function execute(IERC20 _token, address _to, uint256 _val) external payable {
+        _token.transfer(_to, _val);
         // @TODO: maybe emit an event?
         selfdestruct(address(uint256(msg.sender))); //@TODO: revisit it
     }
@@ -169,6 +330,7 @@ contract Vault {
 // File: contracts/libs/Fabric.sol
 
 pragma solidity ^0.5.11;
+
 
 
 
@@ -198,23 +360,21 @@ library Fabric {
     /**
     * @dev Create deterministic vault.
     */
-    function createVault(bytes32 _key, address _token, address _to) internal {
+    function executeVault(bytes32 _key, IERC20 _token, address _to) internal returns (uint256 value) {
         address addr;
         bytes memory slotcode = type(Vault).creationCode;
 
         /* solium-disable-next-line */
         assembly{
-          let size := mload(slotcode)
-          // Concatenate arguments for the constructor
-          mstore(add(slotcode, add(size, 0x20)), _token)
-          mstore(add(slotcode, add(size, 0x34)), _to)
-
           // Create the contract arguments for the constructor
           addr := create2(0, add(slotcode, 0x20), mload(slotcode), _key)
           if iszero(extcodesize(addr)) {
             revert(0, 0)
           }
         }
+
+        value = _token.balanceOf(addr);
+        Vault(addr).execute(_token, _to, value);
     }
 }
 
@@ -227,68 +387,390 @@ pragma solidity ^0.5.11;
 
 
 
+
 contract UniswapEX {
+    using SafeMath for uint256;
     using Fabric for bytes32;
+
+    event DepositETH(
+        uint256 _amount,
+        bytes _data
+    );
+
+    event OrderExecuted(
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address _owner,
+        bytes32 _salt,
+        address _relayer,
+        uint256 _amount,
+        uint256 _bought
+    );
+
+    event OrderCancelled(
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address _owner,
+        bytes32 _salt,
+        uint256 _amount
+    );
 
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint256 private constant never = uint(-1);
 
     UniswapFactory public uniswapFactory;
 
-    function create(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _amount,
-        uint256 _return,
-        uint256 _fee
-    ) external {
+    mapping(bytes32 => uint256) public ethDeposits;
 
-    }
-
-    function execute(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _amount,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner
-    ) external {
-        if (address(_from) == ETH_ADDRESS) {
-            // Keep some eth for paying the fee
-            uint256 sell = _amount - _fee;
-            // Transfer fee
-            msg.sender.transfer(_fee);
-            // Convert using Uniswap
-            UniswapExchange uniswap = uniswapFactory.getExchange(address(_to));
-            uniswap.ethToTokenTransferInput.value(sell)(_return, never, _owner);
-        } else if (address(_to) == ETH_ADDRESS) {
-            // Add extra fee
-            uint256 buy = _return + _fee;
-
-            // Convert
-            UniswapExchange uniswap = uniswapFactory.getExchange(address(_from));
-            _from.approve(address(uniswap), never);
-            uint256 bought = uniswap.tokenToEthSwapInput(_amount, buy, never);
-
-            // Send fee and amount bought
-            msg.sender.transfer(_fee);
-            _owner.transfer(bought - _fee);
-        } else {
-            // Separate the two steps
-
-            // Convert to ETH
-            UniswapExchange uniswap = uniswapFactory.getExchange(address(_from));
-            _from.approve(address(uniswap), uint(-1));
-            uint256 bought = uniswap.tokenToEthSwapInput(_amount, 1, never);
-
-            // Send fee and amount bought
-            msg.sender.transfer(_fee);
-
-            // Convert to final token
-            UniswapExchange uniswapb = uniswapFactory.getExchange(address(_to));
-            uniswapb.ethToTokenTransferInput.value(bought - _fee)(_return, never, _owner);
-        }
+    constructor(UniswapFactory _uniswapFactory) public {
+        uniswapFactory = _uniswapFactory;
     }
 
     function() external payable { }
+
+    function depositEth(
+        bytes calldata _data
+    ) external payable {
+        require(msg.value > 0, "No value provided");
+        // @TODO: check if fromToken and toToken are both not equal to ETH_ADDRESS
+
+        bytes32 key = keccak256(_data);
+        ethDeposits[key] = ethDeposits[key].add(msg.value);
+        emit DepositETH(msg.value, _data);
+    }
+
+    function cancelOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external {
+        require(msg.sender == _owner, "Only the owner of the order can cancel it");
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        uint256 amount;
+        if (address(_fromToken) == ETH_ADDRESS) {
+            amount = ethDeposits[key];
+            ethDeposits[key] = 0;
+            msg.sender.transfer(amount);
+        } else {
+            amount = key.executeVault(_fromToken, msg.sender);
+        }
+
+        emit OrderCancelled(
+            key,
+            address(_fromToken),
+            address(_toToken),
+            _minReturn,
+            _fee,
+            _owner,
+            _salt,
+            amount
+        );
+    }
+
+    function executeOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        // Pull amount
+        uint256 amount = _pullOrder(_fromToken, key);
+        require(amount > 0, "The order does not exists");
+
+        uint256 bought;
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            // Keep some eth for paying the fee
+            uint256 sell = amount.sub(_fee);
+            bought = _ethToToken(uniswapFactory, _toToken, sell, _owner);
+            msg.sender.transfer(_fee);
+        } else if (address(_toToken) == ETH_ADDRESS) {
+            // Convert
+            bought = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
+            bought = bought.sub(_fee);
+
+            // Send fee and amount bought
+            msg.sender.transfer(_fee);
+            _owner.transfer(bought);
+        } else {
+            // Convert from fromToken to ETH
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
+            msg.sender.transfer(_fee);
+
+            // Convert from ETH to toToken
+            bought = _ethToToken(uniswapFactory, _toToken, boughtEth.sub(_fee), _owner);
+        }
+
+        require(bought >= _minReturn, "Tokens bought are not enough");
+
+        emit OrderExecuted(
+            key,
+            address(_fromToken),
+            address(_toToken),
+            _minReturn,
+            _fee,
+            _owner,
+            _salt,
+            msg.sender,
+            amount,
+            bought
+        );
+    }
+
+    function encodeTokenOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _amount,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bytes memory) {
+        return abi.encodeWithSelector(
+            _fromToken.transfer.selector,
+            vaultOfOrder(
+                _fromToken,
+                _toToken,
+                _minReturn,
+                _fee,
+                _owner,
+                _salt
+            ),
+            _amount,
+            abi.encode(
+                _fromToken,
+                _toToken,
+                _minReturn,
+                _fee,
+                _owner,
+                _salt
+            )
+        );
+    }
+
+    function encodeETHOrder(
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bytes memory) {
+        return abi.encode(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+    }
+
+    function decodeOrder(
+        bytes calldata _data
+    ) external view returns (
+        address fromToken,
+        address toToken,
+        uint256 minReturn,
+        uint256 fee,
+        address payable owner,
+        bytes32 salt
+    ) {
+        (
+            fromToken,
+            toToken,
+            minReturn,
+            fee,
+            owner,
+            salt
+        ) = abi.decode(
+            _data,
+            (address, address, uint256, uint256, address, bytes32)
+        );
+    }
+
+    function existOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            return ethDeposits[key] != 0;
+        } else {
+            return _fromToken.balanceOf(key.getVault()) != 0;
+        }
+    }
+
+    function canExecuteOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        // Pull amount
+        uint256 amount;
+        if (address(_fromToken) == ETH_ADDRESS) {
+            amount = ethDeposits[key];
+        } else {
+            amount = _fromToken.balanceOf(key.getVault());
+        }
+
+        uint256 bought;
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            uint256 sell = amount.sub(_fee);
+            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(sell);
+        } else if (address(_toToken) == ETH_ADDRESS) {
+            bought = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            bought = bought.sub(_fee);
+        } else {
+            uint256 boughtEth = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(boughtEth.sub(_fee));
+        }
+
+        return bought >= _minReturn;
+    }
+
+    function vaultOfOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) public view returns (address) {
+        return _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        ).getVault();
+    }
+
+    function _ethToToken(
+        UniswapFactory _uniswapFactory,
+        IERC20 _token,
+        uint256 _amount,
+        address _dest
+    ) private returns (uint256) {
+        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+
+        if (_dest != address(this)) {
+            return uniswap.ethToTokenTransferInput.value(_amount)(1, never, _dest);
+        } else {
+            return uniswap.ethToTokenSwapInput.value(_amount)(1, never);
+        }
+    }
+
+    function _tokenToEth(
+        UniswapFactory _uniswapFactory,
+        IERC20 _token,
+        uint256 _amount,
+        address _dest
+    ) private returns (uint256) {
+        //@TODO: check if can return address(0)
+        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+
+        // Check if previous allowance is enought and approve Uniswap if not
+        uint256 prevAllowance = _token.allowance(address(this), address(uniswap));
+        if (prevAllowance < _amount) {
+            if (prevAllowance != 0) {
+                _token.approve(address(uniswap), 0); // or 1, BNB
+            }
+
+            _token.approve(address(uniswap), uint(-1));
+        }
+
+        // Execute the trade
+        if (_dest != address(this)) {
+            return uniswap.tokenToEthTransferInput(_amount, 1, never, _dest);
+        } else {
+            return uniswap.tokenToEthSwapInput(_amount, 1, never);
+        }
+    }
+
+    function _pullOrder(
+        IERC20 _fromToken,
+        bytes32 _key
+    ) private returns (uint256 amount) {
+        if (address(_fromToken) == ETH_ADDRESS) {
+            amount = ethDeposits[_key];
+            ethDeposits[_key] = 0;
+        } else {
+            amount = _key.executeVault(_fromToken, address(this));
+        }
+    }
+
+    function _keyOf(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) private pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                _fromToken,
+                _toToken,
+                _minReturn,
+                _fee,
+                _owner,
+                _salt
+            )
+        );
+    }
 }
