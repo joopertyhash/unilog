@@ -432,6 +432,8 @@ contract UniswapEX {
     using Fabric for bytes32;
 
     event DepositETH(
+        bytes32 indexed _key,
+        address indexed _caller,
         uint256 _amount,
         bytes _data
     );
@@ -477,11 +479,10 @@ contract UniswapEX {
         bytes calldata _data
     ) external payable {
         require(msg.value > 0, "No value provided");
-        // @TODO: check if fromToken and toToken are both not equal to ETH_ADDRESS
 
         bytes32 key = keccak256(_data);
         ethDeposits[key] = ethDeposits[key].add(msg.value);
-        emit DepositETH(msg.value, _data);
+        emit DepositETH(key, msg.sender, msg.value, _data);
     }
 
     function cancelOrder(
@@ -615,7 +616,7 @@ contract UniswapEX {
         );
     }
 
-    function encodeETHOrder(
+    function encodeEthOrder(
         address _fromToken,
         address _toToken,
         uint256 _minReturn,
@@ -760,14 +761,14 @@ contract UniswapEX {
         uint256 _amount,
         address _dest
     ) private returns (uint256) {
-        //@TODO: check if can return address(0)
         UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        require(address(uniswap) != address(0), "The exchange should exist");
 
         // Check if previous allowance is enought and approve Uniswap if not
         uint256 prevAllowance = _token.allowance(address(this), address(uniswap));
         if (prevAllowance < _amount) {
             if (prevAllowance != 0) {
-                _token.approve(address(uniswap), 0); // or 1, BNB
+                _token.approve(address(uniswap), 0);
             }
 
             _token.approve(address(uniswap), uint(-1));
