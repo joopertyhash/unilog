@@ -13,7 +13,7 @@ import OversizedPanel from '../OversizedPanel'
 import TokenLogo from '../TokenLogo'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
 import { amountFormatter } from '../../utils'
-import { useUniswapExContract } from '../../hooks'
+import { useUniswapExContract} from '../../hooks'
 import { useTokenDetails, useAllTokenDetails } from '../../contexts/Tokens'
 import { useTransactionAdder } from '../../contexts/Transactions'
 import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
@@ -38,7 +38,7 @@ const TOKEN_TO_TOKEN = 2
 const ALLOWED_SLIPPAGE_DEFAULT = 100
 const TOKEN_ALLOWED_SLIPPAGE_DEFAULT = 100
 
-const ETHER_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 const TRANSFER_TX_LENGTH = 138
 const TX_PADDED_BYTES_BOILERPLATE = 128
 
@@ -244,15 +244,15 @@ function getMarketRate(
   }
 }
 
-async function fetchUserOrders(account, contract, setInputError) {
+async function fetchUserOrders(account, uniswapEXContract, setInputError) {
   // @TODO: move this to "useFetchUserOrders"
   hasFetchedOrders = true
 
-  const ordersAdded = {}
+  const ordersAdded = {} // Used to remove deplicated or old (cancelled/executed) orders
   try {
     const [transfers, deposits] = await Promise.all([
       fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8439826&sort=asc&apikey=`),
-      fetch(`https://api.etherscan.io/api?module=logs&action=getLogs&fromBlock=8439826&toBlock=latest&address=${contract.address}&topic0=0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7&apikey=`)
+      fetch(`https://api.etherscan.io/api?module=logs&action=getLogs&fromBlock=8439826&toBlock=latest&address=${uniswapEXContract.address}&topic0=0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7&apikey=`)
     ])
 
     // Transfers
@@ -265,8 +265,8 @@ async function fetchUserOrders(account, contract, setInputError) {
         // @TODO: UAF - please change it, shame on you Nacho
         // Check if the extra data is related to an order
         if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > TRANSFER_TX_LENGTH) {
-          const orderData = `0x${result.input.substr(TRANSFER_TX_LENGTH + TX_PADDED_BYTES_BOILERPLATE, result.input.length)}`
-          const order = await decodeOrder(contract, orderData)
+          const orderData = `0x${result.input.substr(TRANSFER_TX_LENGTH + TX_PADDED_BYTES_BOILERPLATE, result.input.length )}`
+          const order = await decodeOrder(uniswapEXContract, orderData)
           if(order && !ordersAdded[orderData]) {
             orders.push(order)
             ordersAdded[orderData] = true
@@ -282,7 +282,7 @@ async function fetchUserOrders(account, contract, setInputError) {
       for (let { data } of depositsResults.result) {
         const eventBoilerplate = 66
         const orderData = `0x${data.substr(eventBoilerplate + TX_PADDED_BYTES_BOILERPLATE, data.length)}`
-        const order = await decodeOrder(contract, orderData)
+        const order = await decodeOrder(uniswapEXContract, orderData)
         if(order && !ordersAdded[orderData]) {
           orders.push(order)
           ordersAdded[orderData] = true
@@ -296,22 +296,34 @@ async function fetchUserOrders(account, contract, setInputError) {
   setInputError(null) // Hack to update the estates, should be removed
 }
 
-async function decodeOrder(contract, data) {
-  const { fromToken, toToken, minReturn, fee, owner, salt} = await contract.decodeOrder(data)
-  const existOrder = await contract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
+async function decodeOrder(uniswapEXContract, data) {
+  const { fromToken, toToken, minReturn, fee, owner, salt} = await uniswapEXContract.decodeOrder(data)
+  const existOrder = await uniswapEXContract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
   if (existOrder) {
-    return {fromToken, toToken, minReturn, fee, owner, salt}
+    const vault = await uniswapEXContract.vaultOfOrder(fromToken, toToken, minReturn, fee, owner, salt)
+    const amount = await (fromToken === ETH_ADDRESS ? uniswapEXContract.ethDeposits(vault) : new Promise((res) => window.web3.eth.call({
+      to: fromToken,
+      data: `0x70a08231000000000000000000000000${vault.replace('0x', '')}`
+  }, (err, amount) => {
+    res(amount)
+  })))
+    return {fromToken, toToken, minReturn, fee, owner, salt, amount}
   }
 }
 
 export default function ExchangePage({ initialCurrency, sending }) {
   const { t } = useTranslation()
   const { account} = useWeb3Context()
-  const contract = useUniswapExContract()
+  // core swap state
+  const [swapState, dispatchSwapState] = useReducer(swapStateReducer, initialCurrency, getInitialSwapState)
+
+  const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency } = swapState
+
+  const uniswapEXContract = useUniswapExContract()
   const [inputError, setInputError] = useState()
 
   if (!hasFetchedOrders) {
-    fetchUserOrders(account, contract, setInputError)
+    fetchUserOrders(account, uniswapEXContract, setInputError)
   }
   const addTransaction = useTransactionAdder()
 
@@ -326,10 +338,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
     ReactGA.pageview(window.location.pathname + window.location.search)
   }, [])
 
-  // core swap state
-  const [swapState, dispatchSwapState] = useReducer(swapStateReducer, initialCurrency, getInitialSwapState)
 
-  const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency } = swapState
 
   const [recipientError] = useState()
 
@@ -588,22 +597,22 @@ export default function ExchangePage({ initialCurrency, sending }) {
 
     if (swapType === ETH_TO_TOKEN) {
       //@TODO: change it later
-      method = contract.encodeETHOrder
-      fromCurrency = ETHER_ADDRESS
+      method = uniswapEXContract.encodeETHOrder
+      fromCurrency = ETH_ADDRESS
       toCurrency = outputCurrency
     } else if (swapType === TOKEN_TO_ETH) {
-      method = contract.encodeTokenOrder
+      method = uniswapEXContract.encodeTokenOrder
       fromCurrency = inputCurrency
-      toCurrency = ETHER_ADDRESS
+      toCurrency = ETH_ADDRESS
     } else if (swapType === TOKEN_TO_TOKEN) {
-      method = contract.encodeTokenOrder
+      method = uniswapEXContract.encodeTokenOrder
       fromCurrency = inputCurrency
       toCurrency = outputCurrency
     }
     try {
       data = await (swapType === ETH_TO_TOKEN ?  method(fromCurrency, toCurrency, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
       : await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32))))
-      const res = await (swapType === ETH_TO_TOKEN ?  contract.depositEth(data, { value: amount }) : new Promise((res) => window.web3.eth.sendTransaction({
+      const res = await (swapType === ETH_TO_TOKEN ?  uniswapEXContract.depositEth(data, { value: amount }) : new Promise((res) => window.web3.eth.sendTransaction({
         from: account,
         to: fromCurrency,
         data
@@ -622,7 +631,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
 
   async function onCancel(order) {
     const { fromToken, toToken, minReturn, fee, owner, salt} = order
-    const tx = await contract.cancelOrder( fromToken, toToken, minReturn, fee, owner, salt)
+    const tx = await uniswapEXContract.cancelOrder( fromToken, toToken, minReturn, fee, owner, salt)
     addTransaction(tx)
   }
 
@@ -728,8 +737,9 @@ export default function ExchangePage({ initialCurrency, sending }) {
             orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
             <div>
               {orders.map((order, index) => {
-                const fromToken = order.fromToken === ETHER_ADDRESS ? 'ETH' : order.fromToken
-                const toToken = order.toToken === ETHER_ADDRESS ? 'ETH' : order.toToken
+                console.log(order)
+                const fromToken = order.fromToken === ETH_ADDRESS ? 'ETH' : order.fromToken
+                const toToken = order.toToken === ETH_ADDRESS ? 'ETH' : order.toToken
 
                 return (<div key={index} className="order">
                 <div className="tokens">
@@ -759,6 +769,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
                     </Aligner>
                   </CurrencySelect>
                 </div>
+                <p>{`Amount: ${ethers.utils.formatUnits(order.amount, 18)}`}</p>
                 <p>{`Min return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
                 <p>{`Fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
                 <Button onClick={() => onCancel(order)}>
