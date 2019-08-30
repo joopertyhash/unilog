@@ -267,8 +267,18 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
         if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > TRANSFER_TX_LENGTH) {
           const orderData = `0x${result.input.substr(TRANSFER_TX_LENGTH + TX_PADDED_BYTES_BOILERPLATE, result.input.length )}`
           const order = await decodeOrder(uniswapEXContract, orderData)
+          const vault = await uniswapEXContract.vaultOfOrder(...order)
+          const amount = await new Promise((res) => window.web3.eth.call({
+            to: order.fromToken,
+            data: `0x70a08231000000000000000000000000${vault.replace('0x', '')}`
+        }, (error, amount) => {
+          if (error) {
+            throw new Error(error)
+          }
+          res(amount)
+        }))
           if(order && !ordersAdded[orderData]) {
-            orders.push(order)
+            orders.push({...order, amount})
             ordersAdded[orderData] = true
           }
         }
@@ -279,13 +289,18 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
     const depositsResults = await deposits.json()
     if (depositsResults.message === 'OK') {
       // eslint-disable-next-line
-      for (let { data } of depositsResults.result) {
-        const eventBoilerplate = 66
-        const orderData = `0x${data.substr(eventBoilerplate + TX_PADDED_BYTES_BOILERPLATE, data.length)}`
-        const order = await decodeOrder(uniswapEXContract, orderData)
-        if(order && !ordersAdded[orderData]) {
-          orders.push(order)
-          ordersAdded[orderData] = true
+      for (let { data, topics } of depositsResults.result) {
+        const [, key, owner] = topics
+        // Check the owner from a padded 32-bytes address
+        const bytesBoilerplate = 66
+        if (`0x${owner.substr(26, bytesBoilerplate).toLowerCase()}` === account.toLowerCase()) {
+          const orderData = `0x${data.substr(bytesBoilerplate + TX_PADDED_BYTES_BOILERPLATE, data.length)}`
+          const order = await decodeOrder(uniswapEXContract, orderData)
+          const amount = await uniswapEXContract.ethDeposits(key)
+          if(order && !ordersAdded[orderData]) {
+            orders.push({...order, amount})
+            ordersAdded[orderData] = true
+          }
         }
       }
     }
@@ -293,21 +308,14 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
     console.log(`Error when fetching open orders: ${e.message}`)
   }
   isFetchingOrders = false
-  setInputError(null) // Hack to update the estates, should be removed
+  setInputError(null) // Hack to update the component state, should be removed
 }
 
 async function decodeOrder(uniswapEXContract, data) {
   const { fromToken, toToken, minReturn, fee, owner, salt} = await uniswapEXContract.decodeOrder(data)
   const existOrder = await uniswapEXContract.existOrder(fromToken, toToken, minReturn, fee, owner, salt)
   if (existOrder) {
-    const vault = await uniswapEXContract.vaultOfOrder(fromToken, toToken, minReturn, fee, owner, salt)
-    const amount = await (fromToken === ETH_ADDRESS ? uniswapEXContract.ethDeposits(vault) : new Promise((res) => window.web3.eth.call({
-      to: fromToken,
-      data: `0x70a08231000000000000000000000000${vault.replace('0x', '')}`
-  }, (err, amount) => {
-    res(amount)
-  })))
-    return {fromToken, toToken, minReturn, fee, owner, salt, amount}
+    return {fromToken, toToken, minReturn, fee, owner, salt}
   }
 }
 
@@ -617,7 +625,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
         to: fromCurrency,
         data
     }, (err, hash) => {
-      res({ err, hash})
+      if (err) {
+        throw new Error(err)
+      }
+      res({ hash })
     })))
 
       if(res.hash) {

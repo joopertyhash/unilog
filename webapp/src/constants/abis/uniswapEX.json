@@ -27,22 +27,6 @@
   {
     "constant": true,
     "inputs": [
-      { "internalType": "address", "name": "_fromToken", "type": "address" },
-      { "internalType": "address", "name": "_toToken", "type": "address" },
-      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
-      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
-      { "internalType": "address payable", "name": "_owner", "type": "address" },
-      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
-    ],
-    "name": "encodeETHOrder",
-    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
-    "payable": false,
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
       { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
       { "internalType": "contract IERC20", "name": "_toToken", "type": "address" },
       { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
@@ -124,6 +108,22 @@
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [
+      { "internalType": "address", "name": "_fromToken", "type": "address" },
+      { "internalType": "address", "name": "_toToken", "type": "address" },
+      { "internalType": "uint256", "name": "_minReturn", "type": "uint256" },
+      { "internalType": "uint256", "name": "_fee", "type": "uint256" },
+      { "internalType": "address payable", "name": "_owner", "type": "address" },
+      { "internalType": "bytes32", "name": "_salt", "type": "bytes32" }
+    ],
+    "name": "encodeEthOrder",
+    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
+    "payable": false,
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       { "internalType": "contract IERC20", "name": "_fromToken", "type": "address" },
@@ -174,6 +174,8 @@
   {
     "anonymous": false,
     "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "_key", "type": "bytes32" },
+      { "indexed": true, "internalType": "address", "name": "_caller", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "_amount", "type": "uint256" },
       { "indexed": false, "internalType": "bytes", "name": "_data", "type": "bytes" }
     ],
