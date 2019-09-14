@@ -90,7 +90,7 @@ const StyledNavLink = styled(NavLink).attrs({
     box-shadow: 0 4px 8px 0 ${({ theme }) => transparentize(0.95, theme.shadowColor)};
     box-sizing: border-box;
     font-weight: 500;
-    color: ${({ theme }) => theme.royalBlue};
+    color: ${({ theme }) => theme.royalGreen};
     :hover {
       /* border: 1px solid ${({ theme }) => darken(0.1, theme.mercuryGray)}; */
       background-color: ${({ theme }) => darken(0.01, theme.inputBackground)};
@@ -99,7 +99,7 @@ const StyledNavLink = styled(NavLink).attrs({
 
   :hover,
   :focus {
-    color: ${({ theme }) => darken(0.1, theme.royalBlue)};
+    color: ${({ theme }) => darken(0.1, theme.royalGreen)};
   }
 `
 

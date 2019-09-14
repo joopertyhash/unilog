@@ -71,7 +71,7 @@ const AccountControl = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
   align-items: center;
   min-width: 0;
-  
+
   ${({ hasENS, isENS }) =>
     hasENS &&
     isENS &&
@@ -98,7 +98,7 @@ const TransactionListWrapper = styled.div`
 `
 
 const StyledLink = styled(Link)`
-  color: ${({ hasENS, isENS, theme }) => (hasENS ? (isENS ? theme.royalBlue : theme.doveGray) : theme.royalBlue)};
+  color: ${({ hasENS, isENS, theme }) => (hasENS ? (isENS ? theme.royalGreen : theme.doveGray) : theme.royalGreen)};
 `
 
 // function getErrorMessage(event) {

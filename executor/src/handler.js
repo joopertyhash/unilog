@@ -2,7 +2,6 @@ const uniswap_ex_abi = require('./interfaces/uniswapEx.js');
 
 const env = require('../env.js');
 
-
 module.exports = class Handler {
     constructor(w3) {
         this.w3 = w3;
