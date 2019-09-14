@@ -1,5 +1,6 @@
-const factory_abi = require('./uniswapFactory.js');
-const ierc20_abi = require('./ierc20.js');
+const factory_abi = require('./interfaces/uniswapFactory.js');
+const uniswapex_abi = require('./interfaces/uniswapEx.js');
+const ierc20_abi = require('./interfaces/ierc20.js');
 
 const env = require('../env.js');
 
@@ -8,6 +9,7 @@ module.exports = class Conector {
     constructor(w3) {
         this.w3 = w3;
         this.uni_factory = new w3.eth.Contract(factory_abi, env.uniswapFactory);
+        this.uniswap_ex = new w3.eth.Contract(uniswapex_abi, env.uniswapEx);
         this.last_monitored = 8548082;
     }
 
@@ -22,15 +24,32 @@ module.exports = class Conector {
         const total = await this.uni_factory.methods.tokenCount().call();
 
         const orders = [];
+        var tokensChecked = 0;
 
+        // Load ETH orders
+        const events = await this.uniswap_ex.getPastEvents('DepositETH', {
+            fromBlock: this.last_monitored,
+            toBlock: toBlock
+        });
+
+        console.log(events)
+        for (let i in events) {
+            const event = events[i];
+            console.log('Found ETH Order')
+            orders.push(event._data);
+        }
+
+        // Load events of all Uniswap tokens
         for (var i = 1; i < total; i++) {
             const token_addr = await this.uni_factory.methods.getTokenWithId(i).call();
+            tokensChecked++;
+
             // Skip USDT
             if (token_addr.toLowerCase() == "0xdac17f958d2ee523a2206206994597c13d831ec7") {
                 continue
             }
 
-            console.log(`Monitoring token ${token_addr}`);
+            console.log(`${tokensChecked}/${total} - Monitoring token ${token_addr}`);
             const token = new this.w3.eth.Contract(ierc20_abi, token_addr);
             const events = await token.getPastEvents('Transfer', {
                 fromBlock: this.last_monitored,
@@ -39,8 +58,6 @@ module.exports = class Conector {
 
             const checked = []
             var checkedCount = 0
-
-            console.log(`Found ${events.length} TXs for ${token_addr}`);
 
             for (let i in events) {
                 const event = events[i];

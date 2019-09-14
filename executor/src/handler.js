@@ -1,4 +1,4 @@
-const uniswap_ex_abi = require('./uniswapEx.js');
+const uniswap_ex_abi = require('./interfaces/uniswapEx.js');
 
 const env = require('../env.js');
 
@@ -34,15 +34,14 @@ module.exports = class Handler {
     }
 
     async decode(tx_data) {
-        console.log(`0x${tx_data.substr(-384)}`)
-        const decoded = await this.uniswap_ex.methods.decodeOrder(`0x${tx_data.substr(-384)}`).call();
-        console.log(decoded)
+        const data = tx_data > 384 ? `0x${tx_data.substr(-384)}` : tx_data
+        const decoded = await this.uniswap_ex.methods.decodeOrder(data).call()
         return decoded
     }
 
     async fillOrder(order, account) {
         const gasPrice = await this.w3.eth.getGasPrice();
-        const estimatedGas = await this.uniswap_ex.methods.executeOrder(
+        const estimatedGas = parseInt(await this.uniswap_ex.methods.executeOrder(
             order.fromToken,
             order.toToken,
             order.minReturn,
@@ -50,15 +49,14 @@ module.exports = class Handler {
             order.owner,
             order.salt
         ).estimateGas(
-            { from: "0x35d803F11E900fb6300946b525f0d08D1Ffd4bed" }
-        );
+            { from: account.address }
+        ));
 
-        console.log(estimatedGas);
-        if (gasPrice.toFixed() * estimatedGas.toFixed() > order.fee) {
-            // Fee is too low
-            console.log("Skif filling order, fee is not enought")
-            return undefined
-        }
+        // if (gasPrice * estimatedGas > order.fee) {
+        //     // Fee is too low
+        //     console.log("Skip filling order, fee is not enought")
+        //     return undefined
+        // }
 
         try {
             const tx = await this.uniswap_ex.methods.executeOrder(
@@ -71,10 +69,10 @@ module.exports = class Handler {
             ).send(
                 { from: account.address, gas: estimatedGas, gasPrice: gasPrice }
             );
-            console.log(log + ', txHash: ' + tx.transactionHash)
+            console.log('Filled order, txHash: ' + tx.transactionHash)
             return tx.transactionHash
         } catch (e) {
-            console.log('Error: ' + log + ' Error message: ' + e.message)
+            console.log('Error message: ' + e.message)
             return undefined
         }
     }
