@@ -30,14 +30,16 @@ module.exports = class Conector {
         const events = await this.uniswap_ex.getPastEvents('DepositETH', {
             fromBlock: this.last_monitored,
             toBlock: toBlock
-        });
+        })
 
-        console.log(events)
+
         for (let i in events) {
             const event = events[i];
             console.log('Found ETH Order')
-            orders.push(event._data);
+            orders.push(event.returnValues._data);
         }
+        console.log(orders)
+        return orders
 
         // Load events of all Uniswap tokens
         for (var i = 1; i < total; i++) {
