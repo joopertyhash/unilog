@@ -6,12 +6,11 @@ const env = require('../env.js');
 module.exports = class Handler {
     constructor(w3) {
         this.w3 = w3;
-        this.uniswap_ex = w3.eth.Contract(uniswap_ex_abi, env.uniswapEx);
+        this.uniswap_ex = new w3.eth.Contract(uniswap_ex_abi, env.uniswapEx);
         this.orders = []
     }
 
     async exists(order) {
-        // TODO: Check if order is valid
         return await this.uniswap_ex.methods.exists(
             order._from,
             order._to,
@@ -30,6 +29,10 @@ module.exports = class Handler {
             order._fee,
             order._owner
         ).call();
+    }
+
+    async decode(tx_data) {
+        return this.uniswap_ex.methods.decode(order_data).call();
     }
 
     async addOrder(tx_data) {
