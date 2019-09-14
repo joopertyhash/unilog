@@ -29,7 +29,8 @@ contract UniswapEX {
         bytes32 _salt,
         address _relayer,
         uint256 _amount,
-        uint256 _bought
+        uint256 _bought,
+        address _executor
     );
 
     event OrderCancelled(
@@ -111,7 +112,8 @@ contract UniswapEX {
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
-        bytes32 _salt
+        bytes32 _salt,
+        address payable _executor
     ) external {
         bytes32 key = _keyOf(
             _fromToken,
@@ -132,19 +134,19 @@ contract UniswapEX {
             // Keep some eth for paying the fee
             uint256 sell = amount.sub(_fee);
             bought = _ethToToken(uniswapFactory, _toToken, sell, _owner);
-            msg.sender.transfer(_fee);
+            _executor.transfer(_fee);
         } else if (address(_toToken) == ETH_ADDRESS) {
             // Convert
             bought = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
             bought = bought.sub(_fee);
 
             // Send fee and amount bought
-            msg.sender.transfer(_fee);
+            _executor.transfer(_fee);
             _owner.transfer(bought);
         } else {
             // Convert from fromToken to ETH
             uint256 boughtEth = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
-            msg.sender.transfer(_fee);
+            _executor.transfer(_fee);
 
             // Convert from ETH to toToken
             bought = _ethToToken(uniswapFactory, _toToken, boughtEth.sub(_fee), _owner);
@@ -162,7 +164,8 @@ contract UniswapEX {
             _salt,
             msg.sender,
             amount,
-            bought
+            bought,
+            _executor
         );
     }
 
