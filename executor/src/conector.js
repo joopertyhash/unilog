@@ -8,7 +8,7 @@ module.exports = class Conector {
     constructor(w3) {
         this.w3 = w3;
         this.uni_factory = new w3.eth.Contract(factory_abi, env.uniswapFactory);
-        this.last_monitored = 8439579;
+        this.last_monitored = 8548082;
     }
 
     async isValidOrder(order) {
@@ -25,6 +25,11 @@ module.exports = class Conector {
 
         for (var i = 1; i < total; i++) {
             const token_addr = await this.uni_factory.methods.getTokenWithId(i).call();
+            // Skip USDT
+            if (token_addr.toLowerCase() == "0xdac17f958d2ee523a2206206994597c13d831ec7") {
+                continue
+            }
+
             console.log(`Monitoring token ${token_addr}`);
             const token = new this.w3.eth.Contract(ierc20_abi, token_addr);
             const events = await token.getPastEvents('Transfer', {

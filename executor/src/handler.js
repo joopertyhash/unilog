@@ -11,7 +11,7 @@ module.exports = class Handler {
     }
 
     async exists(order) {
-        return await this.uniswap_ex.methods.exists(
+        return await this.uniswap_ex.methods.existOrder(
             order.fromToken,
             order.toToken,
             order.minReturn,
@@ -23,7 +23,7 @@ module.exports = class Handler {
 
     async isReady(order) {
         // TODO: Check if order is valid
-        return await this.uniswap_ex.methods.canFill(
+        return await this.uniswap_ex.methods.canExecuteOrder(
             order.fromToken,
             order.toToken,
             order.minReturn,
@@ -34,41 +34,48 @@ module.exports = class Handler {
     }
 
     async decode(tx_data) {
-        return this.uniswap_ex.methods.decode(order_data).call();
-    }
-
-    async addOrder(tx_data) {
-        const order_data = `0x${tx_data.substr(-384)}`;
-        const order = await this.uniswap_ex.methods.decode(order_data).call();
-        if (await this.exists(order)) {
-            this.orders.push(order);
-        }
-    }
-
-    async start() {
-        for (let i in this.orders) {
-            const order = this.orders[i];
-
-            if (await this.isReady(order)) {
-                // Send fill tx
-            }
-        }
-
-        setTimeout(() => this.start(), 5000);
+        console.log(`0x${tx_data.substr(-384)}`)
+        const decoded = await this.uniswap_ex.methods.decodeOrder(`0x${tx_data.substr(-384)}`).call();
+        console.log(decoded)
+        return decoded
     }
 
     async fillOrder(order, account) {
         const gasPrice = await this.w3.eth.getGasPrice();
-        await this.uniswap_ex.methods.executeOrder(
-            order._from,
-            order._to,
-            order._return,
-            order._fee,
-            order._owner,
+        const estimatedGas = await this.uniswap_ex.methods.executeOrder(
+            order.fromToken,
+            order.toToken,
+            order.minReturn,
+            order.fee,
+            order.owner,
+            order.salt
+        ).estimateGas(
+            { from: "0x35d803F11E900fb6300946b525f0d08D1Ffd4bed" }
+        );
 
-        );
-        const gasEstimate = await this.oracleFactory.methods.provide(address, medianRate).estimateGas(
-            { from: signer.address }
-        );
+        console.log(estimatedGas);
+        if (gasPrice.toFixed() * estimatedGas.toFixed() > order.fee) {
+            // Fee is too low
+            console.log("Skif filling order, fee is not enought")
+            return undefined
+        }
+
+        try {
+            const tx = await this.uniswap_ex.methods.executeOrder(
+                order.fromToken,
+                order.toToken,
+                order.minReturn,
+                order.fee,
+                order.owner,
+                order.salt
+            ).send(
+                { from: account.address, gas: estimatedGas, gasPrice: gasPrice }
+            );
+            console.log(log + ', txHash: ' + tx.transactionHash)
+            return tx.transactionHash
+        } catch (e) {
+            console.log('Error: ' + log + ' Error message: ' + e.message)
+            return undefined
+        }
     }
 }
