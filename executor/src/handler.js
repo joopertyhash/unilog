@@ -51,11 +51,11 @@ module.exports = class Handler {
             { from: account.address }
         ));
 
-        // if (gasPrice * estimatedGas > order.fee) {
-        //     // Fee is too low
-        //     console.log("Skip filling order, fee is not enought")
-        //     return undefined
-        // }
+        if (gasPrice * estimatedGas > order.fee) {
+            // Fee is too low
+            console.log("Skip filling order, fee is not enought")
+            return undefined
+        }
 
         try {
             const tx = await this.uniswap_ex.methods.executeOrder(

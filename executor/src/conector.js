@@ -10,7 +10,7 @@ module.exports = class Conector {
         this.w3 = w3;
         this.uni_factory = new w3.eth.Contract(factory_abi, env.uniswapFactory);
         this.uniswap_ex = new w3.eth.Contract(uniswapex_abi, env.uniswapEx);
-        this.last_monitored = 8548082;
+        this.last_monitored = 8549023;
     }
 
     async isValidOrder(order) {
@@ -38,8 +38,6 @@ module.exports = class Conector {
             console.log('Found ETH Order')
             orders.push(event.returnValues._data);
         }
-        console.log(orders)
-        return orders
 
         // Load events of all Uniswap tokens
         for (var i = 1; i < total; i++) {
