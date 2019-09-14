@@ -1,4 +1,5 @@
 const uniswap_ex_abi = require('./interfaces/uniswapEx.js');
+// const uniswap_ex_proxy_abi = require('./interfaces/uniswapExProxy.js');
 
 const env = require('../env.js');
 
@@ -6,6 +7,7 @@ module.exports = class Handler {
     constructor(w3) {
         this.w3 = w3;
         this.uniswap_ex = new w3.eth.Contract(uniswap_ex_abi, env.uniswapEx);
+        // this.uniswap_ex_proxy = new w3.eth.Contract(uniswap_ex_proxy_abi, env.uniswapExProxy);
         this.orders = []
     }
 
@@ -40,13 +42,21 @@ module.exports = class Handler {
 
     async fillOrder(order, account) {
         const gasPrice = await this.w3.eth.getGasPrice();
+
+        // const checksum = await this.uniswap_ex_proxy.methods.getChecksum(
+        //     order.owner,
+        //     order.salt,
+        //     account.address
+        // ).call();
+
         const estimatedGas = parseInt(await this.uniswap_ex.methods.executeOrder(
             order.fromToken,
             order.toToken,
             order.minReturn,
             order.fee,
             order.owner,
-            order.salt
+            order.salt,
+            account.address
         ).estimateGas(
             { from: account.address }
         ));
@@ -64,7 +74,8 @@ module.exports = class Handler {
                 order.minReturn,
                 order.fee,
                 order.owner,
-                order.salt
+                order.salt,
+                account.address
             ).send(
                 { from: account.address, gas: estimatedGas, gasPrice: gasPrice }
             );
