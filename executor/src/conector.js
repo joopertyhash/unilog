@@ -11,11 +11,22 @@ module.exports = class Conector {
         this.uni_factory = new w3.eth.Contract(factory_abi, env.uniswapFactory);
         this.uniswap_ex = new w3.eth.Contract(uniswapex_abi, env.uniswapEx);
         this.last_monitored = 8549023;
+        this.uniswap_token_cache = {}
     }
 
     async isValidOrder(order) {
         // TODO: Check if order is valid
         return true;
+    }
+
+    async getUniswapAddress(i) {
+        if (this.uniswap_token_cache[i] != undefined) {
+            return this.uniswap_token_cache[i];
+        }
+
+        const token_addr = await this.uni_factory.methods.getTokenWithId(i).call();
+        this.uniswap_token_cache[i] = token_addr;
+        return token_addr;
     }
 
     async getOrders(toBlock) {
@@ -41,7 +52,7 @@ module.exports = class Conector {
 
         // Load events of all Uniswap tokens
         for (var i = 1; i < total; i++) {
-            const token_addr = await this.uni_factory.methods.getTokenWithId(i).call();
+            const token_addr = await this.getUniswapAddress(i);
             tokensChecked++;
 
             // Skip USDT

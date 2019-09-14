@@ -22,6 +22,7 @@ async function main() {
 
     var rawOrders = [];
     var decodedOrders = {};
+    var filledOrders = [];
 
     monitor.onBlock(async (newBlock) => {
         const newOrders = await conector.getOrders(newBlock);
@@ -49,10 +50,11 @@ async function main() {
         for (const i in openOrders) {
             const order = openOrders[i];
 
-            if (await handler.isReady(order)) {
-                // TODO Fill order
-                await handler.fillOrder(order, account);
-                // console.log(order);
+            if (filledOrders.indexOf(order) == -1 && await handler.isReady(order)) {
+                const result = await handler.fillOrder(order, account);
+                if (result != undefined) {
+                    filledOrders.push(order);
+                }
             } else {
                 console.log("not ready");
             }
