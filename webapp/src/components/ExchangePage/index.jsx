@@ -22,6 +22,7 @@ import { useAddressAllowance } from '../../contexts/Allowances'
 
 import './ExchangePage.css'
 
+// Use to detach input from output
 let inputValue
 let isFetchingOrders = true
 let hasFetchedOrders
@@ -34,13 +35,25 @@ const ETH_TO_TOKEN = 0
 const TOKEN_TO_ETH = 1
 const TOKEN_TO_TOKEN = 2
 
-// denominated in bips
+// Denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
 const TOKEN_ALLOWED_SLIPPAGE_DEFAULT = 100
 
+// Addresses
 const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+
+// Bytes
 const TRANSFER_TX_LENGTH = 138
 const TX_PADDED_BYTES_BOILERPLATE = 128
+
+// Contract
+const CONTRACT_DEPLOYED_BLOCK = 8439826
+const TRANSFER_SELECTOR = '0xa9059cbb'
+const BALANCE_SELECTOR = '0x70a08231'
+const DEPOSIT_ORDER_EVENT_TOPIC0 = '0x294738b98bcebacf616fd72532d3d8d8d229807bf03b68b25681bfbbdb3d3fe5'
+
+// Order fee
+const ORDER_FEE = 1000000000000000 // 0,001 ETH
 
 const DownArrowBackground = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -50,12 +63,20 @@ const DownArrowBackground = styled.div`
 
 const WrappedArrowDown = ({ clickable, active, ...rest }) => <ArrowDown {...rest} />
 const DownArrow = styled(WrappedArrowDown)`
-  color: ${({ theme, active }) => (active ? theme.royalBlue : theme.chaliceGray)};
+  color: ${({ theme, active }) => (active ? theme.royalGreen : theme.chaliceGray)};
   width: 0.625rem;
   height: 0.625rem;
   position: relative;
   padding: 0.875rem;
   cursor: ${({ clickable }) => clickable && 'pointer'};
+`
+
+const WrappedArrowRight = ({ clickable, active, ...rest }) => <ArrowDown {...rest} transform="rotate(-90)" />
+const RightArrow = styled(WrappedArrowRight)`
+  color: ${({ theme, active }) => (active ? theme.royalGreen : theme.chaliceGray)};
+  width: 0.625rem;
+  height: 0.625rem;
+  position: relative;
 `
 
 const ExchangeRateWrapper = styled.div`
@@ -80,6 +101,24 @@ const Flex = styled.div`
   button {
     max-width: 20rem;
   }
+`
+
+const Order = styled.div`
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-flex-flow: column nowrap;
+  -ms-flex-flow: column nowrap;
+  flex-flow: column nowrap;
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.05);
+  position: relative;
+  border-radius: 1.25rem;
+  z-index: 1;
+  padding: 20px;
+  margin-bottom: 40px;
+  border: ${({ theme }) => `1px solid ${theme.malibuGreen}`};
+  background-color: ${({ theme }) => theme.concreteGray};
 `
 
 function calculateSlippageBounds(value, token = false, tokenAllowedSlippage, allowedSlippage) {
@@ -177,7 +216,7 @@ function swapStateReducer(state, action) {
       return {
         ...state,
         independentValue: value,
-        dependentValue: value === independentValue ? dependentValue : '',
+        dependentValue: Number(value) === Number(independentValue) ? dependentValue : '',
         independentField: field
       }
     }
@@ -251,8 +290,8 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
   const ordersAdded = {} // Used to remove deplicated or old (cancelled/executed) orders
   try {
     const [transfers, deposits] = await Promise.all([
-      fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=8439826&sort=asc&apikey=`),
-      fetch(`https://api.etherscan.io/api?module=logs&action=getLogs&fromBlock=8439826&toBlock=latest&address=${uniswapEXContract.address}&topic0=0xb21e79db45360eb32db67089c680a222fab2c210c4ac7239730c0dbc6664c2a7&apikey=`)
+      fetch(`http://api.etherscan.io/api?module=account&action=txlist&address=${account}&startblock=${CONTRACT_DEPLOYED_BLOCK}&sort=asc&apikey=`),
+      fetch(`https://api.etherscan.io/api?module=logs&action=getLogs&fromBlock=${CONTRACT_DEPLOYED_BLOCK}&toBlock=latest&address=${uniswapEXContract.address}&topic0=${DEPOSIT_ORDER_EVENT_TOPIC0}&apikey=`)
     ])
 
     // Transfers
@@ -264,13 +303,16 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
         const { result } = await res.json()
         // @TODO: UAF - please change it, shame on you Nacho
         // Check if the extra data is related to an order
-        if (result && result.input.indexOf('0xa9059cbb') !== -1 && result.input.length > TRANSFER_TX_LENGTH) {
+        if (result && result.input.indexOf(TRANSFER_SELECTOR) !== -1 && result.input.length > TRANSFER_TX_LENGTH) {
           const orderData = `0x${result.input.substr(TRANSFER_TX_LENGTH + TX_PADDED_BYTES_BOILERPLATE, result.input.length )}`
           const order = await decodeOrder(uniswapEXContract, orderData)
+          if (!order) {
+            continue
+          }
           const vault = await uniswapEXContract.vaultOfOrder(...order)
           const amount = await new Promise((res) => window.web3.eth.call({
             to: order.fromToken,
-            data: `0x70a08231000000000000000000000000${vault.replace('0x', '')}`
+            data: `${BALANCE_SELECTOR}000000000000000000000000${vault.replace('0x', '')}`
         }, (error, amount) => {
           if (error) {
             throw new Error(error)
@@ -587,7 +629,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
     return `Balance: ${value}`
   }
 
-  async function onSwap() {
+  async function onPlace() {
     let method, fromCurrency, toCurrency, amount, minimumReturn, data
 
     ReactGA.event({
@@ -605,7 +647,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
 
     if (swapType === ETH_TO_TOKEN) {
       //@TODO: change it later
-      method = uniswapEXContract.encodeETHOrder
+      method = uniswapEXContract.encodeEthOrder
       fromCurrency = ETH_ADDRESS
       toCurrency = outputCurrency
     } else if (swapType === TOKEN_TO_ETH) {
@@ -618,8 +660,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
       toCurrency = outputCurrency
     }
     try {
-      data = await (swapType === ETH_TO_TOKEN ?  method(fromCurrency, toCurrency, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
-      : await method(fromCurrency, toCurrency, amount, minimumReturn, 100000000000000, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32))))
+      data = await (swapType === ETH_TO_TOKEN ?  method(fromCurrency, toCurrency, minimumReturn, ORDER_FEE, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32)))
+      : await method(fromCurrency, toCurrency, amount, minimumReturn, ORDER_FEE, account, ethers.utils.bigNumberify(ethers.utils.randomBytes(32))))
       const res = await (swapType === ETH_TO_TOKEN ?  uniswapEXContract.depositEth(data, { value: amount }) : new Promise((res) => window.web3.eth.sendTransaction({
         from: account,
         to: fromCurrency,
@@ -734,11 +776,11 @@ export default function ExchangePage({ initialCurrency, sending }) {
       <Flex>
         <Button
           disabled={!isValid || customSlippageError === 'invalid'}
-          onClick={onSwap}
+          onClick={onPlace}
           warning={highSlippageWarning || customSlippageError === 'warning'}
         >
           {highSlippageWarning || customSlippageError === 'warning'
-            ? t('swapAnyway')
+            ? t('placeAnyway')
             : t('place')}
         </Button>
       </Flex>
@@ -748,11 +790,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
             orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
             <div>
               {orders.map((order, index) => {
-                console.log(order)
                 const fromToken = order.fromToken === ETH_ADDRESS ? 'ETH' : order.fromToken
                 const toToken = order.toToken === ETH_ADDRESS ? 'ETH' : order.toToken
 
-                return (<div key={index} className="order">
+                return (<Order key={index} className="order" >
                 <div className="tokens">
                   <CurrencySelect
                       selected={true}
@@ -766,7 +807,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
                       }
                     </Aligner>
                   </CurrencySelect>
-                  <Aligner>{'->'}</Aligner>
+                  <Aligner><RightArrow transform="rotate(-90)" /></Aligner>
                   <CurrencySelect
                       selected={true}
                     >
@@ -783,10 +824,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
                 <p>{`Amount: ${ethers.utils.formatUnits(order.amount, 18)}`}</p>
                 <p>{`Min return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
                 <p>{`Fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
-                <Button onClick={() => onCancel(order)}>
+                <Button className="cta" onClick={() => onCancel(order)}>
                   {t('cancel')}
                 </Button>
-                </div>)}
+                </Order>)}
                     )
             }
           </div>}

@@ -117,7 +117,7 @@ const FancyButton = styled.button`
     border: 1px solid ${({ theme }) => theme.chaliceGray};
   }
   :focus {
-    border: 1px solid ${({ theme }) => theme.royalBlue};
+    border: 1px solid ${({ theme }) => theme.royalGreen};
   }
 `
 
@@ -132,31 +132,31 @@ const Option = styled(FancyButton)`
   ${({ active, theme }) =>
     active &&
     css`
-      background-color: ${({ theme }) => theme.royalBlue};
+      background-color: ${({ theme }) => theme.royalGreen};
       color: ${({ theme }) => theme.white};
       border: none;
 
       :hover {
         border: none;
         box-shadow: none;
-        background-color: ${({ theme }) => darken(0.05, theme.royalBlue)};
+        background-color: ${({ theme }) => darken(0.05, theme.royalGreen)};
       }
 
       :focus {
         border: none;
         box-shadow: none;
-        background-color: ${({ theme }) => lighten(0.05, theme.royalBlue)};
+        background-color: ${({ theme }) => lighten(0.05, theme.royalGreen)};
       }
 
       :active {
-        background-color: ${({ theme }) => darken(0.05, theme.royalBlue)};
+        background-color: ${({ theme }) => darken(0.05, theme.royalGreen)};
       }
 
       :hover:focus {
-        background-color: ${({ theme }) => theme.royalBlue};
+        background-color: ${({ theme }) => theme.royalGreen};
       }
       :hover:focus:active {
-        background-color: ${({ theme }) => darken(0.05, theme.royalBlue)};
+        background-color: ${({ theme }) => darken(0.05, theme.royalGreen)};
       }
     `}
 `
@@ -228,9 +228,9 @@ const OptionCustom = styled(FancyButton)`
   ${({ active }) =>
     active &&
     css`
-      border: 1px solid ${({ theme }) => theme.royalBlue};
+      border: 1px solid ${({ theme }) => theme.royalGreen};
       :hover {
-        border: 1px solid ${({ theme }) => darken(0.1, theme.royalBlue)};
+        border: 1px solid ${({ theme }) => darken(0.1, theme.royalGreen)};
       }
     `}
 

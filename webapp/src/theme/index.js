@@ -58,8 +58,8 @@ const theme = darkMode => ({
   charcoalBlack: darkMode ? '#F2F2F2' : '#404040',
   // blues
   zumthorBlue: darkMode ? '#212529' : '#eeffeb',
-  malibuBlue: darkMode ? '#87c122' : '#87c122',
-  royalBlue: darkMode ? '#87c122' : '#498227',
+  malibuGreen: darkMode ? '#87c122' : '#87c122',
+  royalGreen: darkMode ? '#87c122' : '#498227',
   loadingBlue: darkMode ? '#e4f0ff' : '#e4f0ff',
 
   // purples

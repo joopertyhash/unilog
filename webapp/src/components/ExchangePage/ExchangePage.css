@@ -1,38 +1,26 @@
-.order {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-flex-flow: column nowrap;
-  -ms-flex-flow: column nowrap;
-  flex-flow: column nowrap;
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.05);
-  position: relative;
-  border-radius: 1.25rem;
-  background-color: #202124;
-  z-index: 1;
-  padding: 20px;
-  margin-bottom: 40px;
-}
-
 .order p {
   font-size: 14px;
   color: #C4C4C4;
   margin: 3px 0;
 }
 
-.order button {
-  max-width: 50%;
-  margin: auto;
-}
-
 .tokens {
   margin-bottom: 15px;
+  display: flex;
+  align-items: center;
 }
 
 .tokens > span {
-  width: 40px;
+  width: 30px;
   margin: 0;
-  display: inline-block;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.order .cta {
+  max-width: 180px;
+  margin: 15px auto 0;
+  width: 35%;
+  padding: .7rem 1.7rem .7rem 1.7rem;
 }

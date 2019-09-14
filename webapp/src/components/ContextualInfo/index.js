@@ -23,7 +23,7 @@ const Details = styled.div`
 
 const SummaryWrapperContainer = styled.div`
   ${({ theme }) => theme.flexRowNoWrap};
-  color: ${({ theme }) => theme.royalBlue};
+  color: ${({ theme }) => theme.royalGreen};
   text-align: center;
   margin-top: 1rem;
   padding-top: 1rem;
@@ -45,14 +45,14 @@ const SummaryWrapperContainer = styled.div`
 const WrappedDropup = ({ isError, highSlippageWarning, ...rest }) => <Dropup {...rest} />
 const ColoredDropup = styled(WrappedDropup)`
   path {
-    stroke: ${({ theme }) => theme.royalBlue};
+    stroke: ${({ theme }) => theme.royalGreen};
   }
 `
 
 const WrappedDropdown = ({ isError, highSlippageWarning, ...rest }) => <Dropdown {...rest} />
 const ColoredDropdown = styled(WrappedDropdown)`
   path {
-    stroke: ${({ theme }) => theme.royalBlue};
+    stroke: ${({ theme }) => theme.royalGreen};
   }
 `
 
