@@ -6,7 +6,7 @@ export const FACTORY_ADDRESSES = {
 }
 
 export const UNISWAPEX_ADDRESSES = {
-  1: '0xa65ede0fe9cca6dbf3528d515c9c04f6e992dddc',
+  1: '0xc176b7afa76d57a3fa7050442f4fe7f1b9755d0a',
   3: '0xbbed73a556c48a6517f4f92325eb34ef40127922',
 }
 

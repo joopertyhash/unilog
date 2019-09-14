@@ -12,8 +12,10 @@ import CurrencyInputPanel, { CurrencySelect, Aligner, StyledTokenName }  from '.
 import OversizedPanel from '../OversizedPanel'
 import TokenLogo from '../TokenLogo'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
+import Circle from '../../assets/images/circle.svg'
 import { amountFormatter } from '../../utils'
 import { useUniswapExContract} from '../../hooks'
+import { Spinner } from '../../theme'
 import { useTokenDetails, useAllTokenDetails } from '../../contexts/Tokens'
 import { useTransactionAdder } from '../../contexts/Transactions'
 import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
@@ -53,7 +55,7 @@ const BALANCE_SELECTOR = '0x70a08231'
 const DEPOSIT_ORDER_EVENT_TOPIC0 = '0x294738b98bcebacf616fd72532d3d8d8d229807bf03b68b25681bfbbdb3d3fe5'
 
 // Order fee
-const ORDER_FEE = 11600000000290000 // 0,0116 ETH
+const ORDER_FEE = '11600000000290000' // 0,0116 ETH
 
 const DownArrowBackground = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -119,6 +121,10 @@ const Order = styled.div`
   margin-bottom: 40px;
   border: ${({ theme }) => `1px solid ${theme.malibuGreen}`};
   background-color: ${({ theme }) => theme.concreteGray};
+`
+
+const SpinnerWrapper = styled(Spinner)`
+  margin: 0 0.25rem 0 0.25rem;
 `
 
 function calculateSlippageBounds(value, token = false, tokenAllowedSlippage, allowedSlippage) {
@@ -786,7 +792,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
       </Flex>
       <div>
           <h2>{`${t('Orders')} ${orders.length > 0 ? `(${orders.length})` : ''}`}</h2>
-          {isFetchingOrders ? t('fetchingOrders') :
+          {isFetchingOrders ? <SpinnerWrapper src={Circle} alt="loader"/> :
             orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
             <div>
               {orders.map((order, index) => {
