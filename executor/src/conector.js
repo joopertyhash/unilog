@@ -8,7 +8,7 @@ module.exports = class Conector {
     constructor(w3) {
         this.w3 = w3;
         this.uni_factory = new w3.eth.Contract(factory_abi, env.uniswapFactory);
-        this.last_monitored = 8414292;
+        this.last_monitored = 8439579;
     }
 
     async isValidOrder(order) {
@@ -33,7 +33,7 @@ module.exports = class Conector {
             });
 
             const checked = []
-            var checkedCount = 0;
+            var checkedCount = 0
 
             console.log(`Found ${events.length} TXs for ${token_addr}`);
 
@@ -41,7 +41,7 @@ module.exports = class Conector {
                 const event = events[i];
 
                 const tx = event.transactionHash;
-                checkedCount += 1;
+                checkedCount += 1
 
                 if (checked.includes(tx)) {
                     continue
@@ -52,7 +52,7 @@ module.exports = class Conector {
 
                 console.log(`${checkedCount}/${events.length} - Check TX ${tx}`)
                 if (tx_data.startsWith("0xa9059cbb") && tx_data.length == 650) {
-                    orders.push(tx_data);
+                    orders.push(tx_data)
                     console.log(`Found order TX ${tx}`)
                 }
 

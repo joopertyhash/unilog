@@ -12,22 +12,24 @@ module.exports = class Handler {
 
     async exists(order) {
         return await this.uniswap_ex.methods.exists(
-            order._from,
-            order._to,
-            order._return,
-            order._fee,
-            order._owner
+            order.fromToken,
+            order.toToken,
+            order.minReturn,
+            order.fee,
+            order.owner,
+            order.salt
         ).call();
     }
 
     async isReady(order) {
         // TODO: Check if order is valid
         return await this.uniswap_ex.methods.canFill(
-            order._from,
-            order._to,
-            order._return,
-            order._fee,
-            order._owner
+            order.fromToken,
+            order.toToken,
+            order.minReturn,
+            order.fee,
+            order.owner,
+            order.salt
         ).call();
     }
 
@@ -53,5 +55,20 @@ module.exports = class Handler {
         }
 
         setTimeout(() => this.start(), 5000);
+    }
+
+    async fillOrder(order, account) {
+        const gasPrice = await this.w3.eth.getGasPrice();
+        await this.uniswap_ex.methods.executeOrder(
+            order._from,
+            order._to,
+            order._return,
+            order._fee,
+            order._owner,
+
+        );
+        const gasEstimate = await this.oracleFactory.methods.provide(address, medianRate).estimateGas(
+            { from: signer.address }
+        );
     }
 }
