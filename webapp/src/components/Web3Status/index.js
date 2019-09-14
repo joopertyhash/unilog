@@ -42,21 +42,21 @@ const Web3StatusError = styled(Web3StatusGeneric)`
 `
 
 const Web3StatusConnect = styled(Web3StatusGeneric)`
-  background-color: ${({ theme }) => theme.royalBlue};
-  border: 1px solid ${({ theme }) => theme.royalBlue};
+  background-color: ${({ theme }) => theme.royalGreen};
+  border: 1px solid ${({ theme }) => theme.royalGreen};
   color: ${({ theme }) => theme.white};
   font-weight: 500;
 
   :hover,
   :focus {
-    background-color: ${({ theme }) => darken(0.1, theme.royalBlue)};
+    background-color: ${({ theme }) => darken(0.1, theme.royalGreen)};
   }
 `
 
 const Web3StatusConnected = styled(Web3StatusGeneric)`
   background-color: ${({ pending, theme }) => (pending ? theme.zumthorBlue : theme.inputBackground)};
-  border: 1px solid ${({ pending, theme }) => (pending ? theme.royalBlue : theme.mercuryGray)};
-  color: ${({ pending, theme }) => (pending ? theme.royalBlue : theme.doveGray)};
+  border: 1px solid ${({ pending, theme }) => (pending ? theme.royalGreen : theme.mercuryGray)};
+  color: ${({ pending, theme }) => (pending ? theme.royalGreen : theme.doveGray)};
   font-weight: 400;
   :hover {
 
@@ -64,11 +64,11 @@ const Web3StatusConnected = styled(Web3StatusGeneric)`
       color: ${({ theme }) => theme.uniswapPink};
     } */
     background-color: ${({ pending, theme }) =>
-      pending ? transparentize(0.9, theme.royalBlue) : darken(0.05, theme.inputBackground)};
-    
+      pending ? transparentize(0.9, theme.royalGreen) : darken(0.05, theme.inputBackground)};
+
   :focus {
     border: 1px solid
-      ${({ pending, theme }) => (pending ? darken(0.1, theme.royalBlue) : darken(0.1, theme.mercuryGray))};
+      ${({ pending, theme }) => (pending ? darken(0.1, theme.royalGreen) : darken(0.1, theme.mercuryGray))};
   }
 `
 

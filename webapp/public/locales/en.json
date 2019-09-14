@@ -85,5 +85,8 @@
   "priceChange": "Expected price slippage",
   "forAtLeast": "for at least ",
   "place": "Place",
-  "placeAnyway": "Place anyway"
+  "placeAnyway": "Place anyway",
+  "cancel": "Cancel",
+  "noOpenOrders": "No open orders",
+  "fetchingOrders": "Loading open orders"
 }

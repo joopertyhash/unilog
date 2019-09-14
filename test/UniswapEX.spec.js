@@ -50,7 +50,6 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
     '0xf9fea21bcccd3d13caa0d7f67bc4bd0776a06c420e932ee5add8f3affb3f354b'
   const CRATIONCODE_VAULT =
     '6012600081600A8239F360008060448082803781806038355AF132FF'
-  console.log(web3.utils.soliditySha3({ t: 'bytes', v: CRATIONCODE_VAULT }))
 
   // Contracts
   let token1
@@ -110,7 +109,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
   describe('It should trade on Uniswap', async function() {
     it('should execute buy tokens with ETH', async () => {
       // Create order
-      const encodedOrder = await uniswapEx.encode(
+      const encodedOrder = await uniswapEx.encodeEthOrder(
         ethAddress, // Sell ETH
         token1.address, // Buy TOKEN 1
         new BN(300), // Get at least 300 Tokens
@@ -119,7 +118,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
         FIXED_SALT
       )
 
-      await uniswapEx.depositETH(encodedOrder, {
+      await uniswapEx.depositEth(encodedOrder, {
         value: new BN(10000),
         from: user
       })
@@ -136,7 +135,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       )
 
       // Execute order
-      const tx = await uniswapEx.execute(
+      const tx = await uniswapEx.executeOrder(
         ethAddress, // Sell ETH
         token1.address, // Buy TOKEN 1
         new BN(300), // Get at least 300 Tokens
@@ -214,7 +213,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       const userTokenSnap = await etherSnap(user, 'user')
 
       // Execute order
-      const tx = await uniswapEx.execute(
+      const tx = await uniswapEx.executeOrder(
         token1.address, // Sell token 1
         ethAddress, // Buy ETH
         new BN(50), // Get at least 50 ETH Wei
@@ -302,7 +301,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
       // Execute order
-      const tx = await uniswapEx.execute(
+      const tx = await uniswapEx.executeOrder(
         token1.address, // Sell token 1
         token2.address, // Buy ETH
         new BN(50), // Get at least 50 ETH Wei

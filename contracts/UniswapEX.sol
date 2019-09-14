@@ -13,19 +13,34 @@ contract UniswapEX {
     using Fabric for bytes32;
 
     event DepositETH(
+        bytes32 indexed _key,
+        address indexed _caller,
         uint256 _amount,
         bytes _data
     );
 
-    event Executed(
-        address _from,
-        address _to,
-        uint256 _amount,
-        uint256 _bought,
+    event OrderExecuted(
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
         uint256 _fee,
         address _owner,
         bytes32 _salt,
-        address _relayer
+        address _relayer,
+        uint256 _amount,
+        uint256 _bought
+    );
+
+    event OrderCancelled(
+        bytes32 indexed _key,
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address _owner,
+        bytes32 _salt,
+        uint256 _amount
     );
 
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -37,6 +52,285 @@ contract UniswapEX {
 
     constructor(UniswapFactory _uniswapFactory) public {
         uniswapFactory = _uniswapFactory;
+    }
+
+    function() external payable { }
+
+    function depositEth(
+        bytes calldata _data
+    ) external payable {
+        require(msg.value > 0, "No value provided");
+
+        bytes32 key = keccak256(_data);
+        ethDeposits[key] = ethDeposits[key].add(msg.value);
+        emit DepositETH(key, msg.sender, msg.value, _data);
+    }
+
+    function cancelOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external {
+        require(msg.sender == _owner, "Only the owner of the order can cancel it");
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        uint256 amount;
+        if (address(_fromToken) == ETH_ADDRESS) {
+            amount = ethDeposits[key];
+            ethDeposits[key] = 0;
+            msg.sender.transfer(amount);
+        } else {
+            amount = key.executeVault(_fromToken, msg.sender);
+        }
+
+        emit OrderCancelled(
+            key,
+            address(_fromToken),
+            address(_toToken),
+            _minReturn,
+            _fee,
+            _owner,
+            _salt,
+            amount
+        );
+    }
+
+    function executeOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        // Pull amount
+        uint256 amount = _pullOrder(_fromToken, key);
+        require(amount > 0, "The order does not exists");
+
+        uint256 bought;
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            // Keep some eth for paying the fee
+            uint256 sell = amount.sub(_fee);
+            bought = _ethToToken(uniswapFactory, _toToken, sell, _owner);
+            msg.sender.transfer(_fee);
+        } else if (address(_toToken) == ETH_ADDRESS) {
+            // Convert
+            bought = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
+            bought = bought.sub(_fee);
+
+            // Send fee and amount bought
+            msg.sender.transfer(_fee);
+            _owner.transfer(bought);
+        } else {
+            // Convert from fromToken to ETH
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _fromToken, amount, address(this));
+            msg.sender.transfer(_fee);
+
+            // Convert from ETH to toToken
+            bought = _ethToToken(uniswapFactory, _toToken, boughtEth.sub(_fee), _owner);
+        }
+
+        require(bought >= _minReturn, "Tokens bought are not enough");
+
+        emit OrderExecuted(
+            key,
+            address(_fromToken),
+            address(_toToken),
+            _minReturn,
+            _fee,
+            _owner,
+            _salt,
+            msg.sender,
+            amount,
+            bought
+        );
+    }
+
+    function encodeTokenOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _amount,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bytes memory) {
+        return abi.encodeWithSelector(
+            _fromToken.transfer.selector,
+            vaultOfOrder(
+                _fromToken,
+                _toToken,
+                _minReturn,
+                _fee,
+                _owner,
+                _salt
+            ),
+            _amount,
+            abi.encode(
+                _fromToken,
+                _toToken,
+                _minReturn,
+                _fee,
+                _owner,
+                _salt
+            )
+        );
+    }
+
+    function encodeEthOrder(
+        address _fromToken,
+        address _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external pure returns (bytes memory) {
+        return abi.encode(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+    }
+
+    function decodeOrder(
+        bytes calldata _data
+    ) external pure returns (
+        address fromToken,
+        address toToken,
+        uint256 minReturn,
+        uint256 fee,
+        address payable owner,
+        bytes32 salt
+    ) {
+        (
+            fromToken,
+            toToken,
+            minReturn,
+            fee,
+            owner,
+            salt
+        ) = abi.decode(
+            _data,
+            (address, address, uint256, uint256, address, bytes32)
+        );
+    }
+
+    function existOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            return ethDeposits[key] != 0;
+        } else {
+            return _fromToken.balanceOf(key.getVault()) != 0;
+        }
+    }
+
+    function canExecuteOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) external view returns (bool) {
+        bytes32 key = _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        );
+
+        // Pull amount
+        uint256 amount;
+        if (address(_fromToken) == ETH_ADDRESS) {
+            amount = ethDeposits[key];
+        } else {
+            amount = _fromToken.balanceOf(key.getVault());
+        }
+
+        uint256 bought;
+
+        if (address(_fromToken) == ETH_ADDRESS) {
+            if (amount <= _fee) {
+                return false;
+            }
+
+            uint256 sell = amount.sub(_fee);
+            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(sell);
+        } else if (address(_toToken) == ETH_ADDRESS) {
+            bought = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            if (bought <= _fee) {
+                return false;
+            }
+
+            bought = bought.sub(_fee);
+        } else {
+            uint256 boughtEth = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            if (boughtEth <= _fee) {
+                return false;
+            }
+
+            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(boughtEth.sub(_fee));
+        }
+
+        return bought >= _minReturn;
+    }
+
+    function vaultOfOrder(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _salt
+    ) public view returns (address) {
+        return _keyOf(
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _salt
+        ).getVault();
     }
 
     function _ethToToken(
@@ -61,9 +355,9 @@ contract UniswapEX {
         address _dest
     ) private returns (uint256) {
         UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        require(address(uniswap) != address(0), "The exchange should exist");
 
-        // Check if previues allowance is enought
-        // and approve Uniswap if is not
+        // Check if previous allowance is enought and approve Uniswap if not
         uint256 prevAllowance = _token.allowance(address(this), address(uniswap));
         if (prevAllowance < _amount) {
             if (prevAllowance != 0) {
@@ -81,284 +375,35 @@ contract UniswapEX {
         }
     }
 
-    function _pull(
-        IERC20 _from,
+    function _pullOrder(
+        IERC20 _fromToken,
         bytes32 _key
     ) private returns (uint256 amount) {
-        if (address(_from) == ETH_ADDRESS) {
+        if (address(_fromToken) == ETH_ADDRESS) {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
         } else {
-            amount = _key.executeVault(_from, address(this));
+            amount = _key.executeVault(_fromToken, address(this));
         }
     }
 
     function _keyOf(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
         bytes32 _salt
     ) private pure returns (bytes32) {
         return keccak256(
             abi.encode(
-                _from,
-                _to,
-                _return,
+                _fromToken,
+                _toToken,
+                _minReturn,
                 _fee,
                 _owner,
                 _salt
             )
         );
     }
-
-    function vaultOfOrder(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) public view returns (address) {
-        return _keyOf(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        ).getVault();
-    }
-
-    function encodeTokenOrder(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _amount,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external view returns (bytes memory) {
-        return abi.encodeWithSelector(
-            _from.transfer.selector,
-            vaultOfOrder(
-                _from,
-                _to,
-                _return,
-                _fee,
-                _owner,
-                _salt
-            ),
-            _amount,
-            abi.encode(
-                _from,
-                _to,
-                _return,
-                _fee,
-                _owner,
-                _salt
-            )
-        );
-    }
-
-    function encode(
-        address _from,
-        address _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external pure returns (bytes memory) {
-        return abi.encode(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        );
-    }
-
-    function decode(
-        bytes calldata _data
-    ) external pure returns (
-        address _from,
-        address _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner
-    ) {
-        (
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner
-        ) = abi.decode(
-            _data,
-            (address, address, uint256, uint256, address)
-        );
-    }
-
-    function exists(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external view returns (bool) {
-        bytes32 key = _keyOf(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        );
-
-        if (address(_from) == ETH_ADDRESS) {
-            return ethDeposits[key] != 0;
-        } else {
-            return _from.balanceOf(key.getVault()) != 0;
-        }
-    }
-
-    function canFill(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external view returns (bool) {
-        bytes32 key = _keyOf(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        );
-
-        // Pull amount
-        uint256 amount;
-        if (address(_from) == ETH_ADDRESS) {
-            amount = ethDeposits[key];
-        } else {
-            amount = _from.balanceOf(key.getVault());
-        }
-
-        uint256 bought;
-
-        if (address(_from) == ETH_ADDRESS) {
-            uint256 sell = amount.sub(_fee);
-            bought = uniswapFactory.getExchange(address(_to)).getEthToTokenInputPrice(sell);
-        } else if (address(_to) == ETH_ADDRESS) {
-            bought = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
-            bought = bought.sub(_fee);
-        } else {
-            uint256 boughtEth = uniswapFactory.getExchange(address(_from)).getTokenToEthInputPrice(amount);
-            bought = uniswapFactory.getExchange(address(_to)).getEthToTokenInputPrice(boughtEth.sub(_fee));
-        }
-
-        return bought >= _return;
-    }
-
-    function depositETH(
-        bytes calldata _data
-    ) external payable {
-        bytes32 key = keccak256(_data);
-        ethDeposits[key] = ethDeposits[key].add(msg.value);
-        emit DepositETH(msg.value, _data);
-    }
-
-    function cancel(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external {
-        require(msg.sender == _owner, "only owner can cancel");
-        bytes32 key = _keyOf(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        );
-
-        if (address(_from) == ETH_ADDRESS) {
-            uint256 amount = ethDeposits[key];
-            ethDeposits[key] = 0;
-            msg.sender.transfer(amount);
-        } else {
-            key.executeVault(_from, msg.sender);
-        }
-    }
-
-    function execute(
-        IERC20 _from,
-        IERC20 _to,
-        uint256 _return,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _salt
-    ) external {
-        bytes32 key = _keyOf(
-            _from,
-            _to,
-            _return,
-            _fee,
-            _owner,
-            _salt
-        );
-
-        // Pull amount
-        uint256 amount = _pull(_from, key);
-        require(amount > 0, "order does not exists");
-
-        uint256 bought;
-
-        if (address(_from) == ETH_ADDRESS) {
-            // Keep some eth for paying the fee
-            uint256 sell = amount.sub(_fee);
-            bought = _ethToToken(uniswapFactory, _to, sell, _owner);
-            msg.sender.transfer(_fee);
-        } else if (address(_to) == ETH_ADDRESS) {
-            // Convert
-            bought = _tokenToEth(uniswapFactory, _from, amount, address(this));
-            bought = bought.sub(_fee);
-
-            // Send fee and amount bought
-            msg.sender.transfer(_fee);
-            _owner.transfer(bought);
-        } else {
-            // Convert from FromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _from, amount, address(this));
-            msg.sender.transfer(_fee);
-
-            // Convert from ETH to ToToken
-            bought = _ethToToken(uniswapFactory, _to, boughtEth.sub(_fee), _owner);
-        }
-
-        require(bought >= _return, "sell return is not enought");
-
-        emit Executed(
-            address(_from),
-            address(_to),
-            amount,
-            bought,
-            _fee,
-            _owner,
-            _salt,
-            msg.sender
-        );
-    }
-
-    function() external payable { }
 }

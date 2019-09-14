@@ -39,8 +39,8 @@ const SubCurrencySelect = styled.button`
   cursor: pointer;
   user-select: none;
   background: ${({ theme }) => theme.zumthorBlue};
-  border: 1px solid ${({ theme }) => theme.royalBlue};
-  color: ${({ theme }) => theme.royalBlue};
+  border: 1px solid ${({ theme }) => theme.royalGreen};
+  color: ${({ theme }) => theme.royalGreen};
 `
 
 const InputRow = styled.div`
@@ -65,12 +65,12 @@ const StyledBorderlessInput = styled(BorderlessInput)`
   background-color: ${({ theme }) => theme.concreteGray};
 `
 
-const CurrencySelect = styled.button`
+export const CurrencySelect = styled.button`
   align-items: center;
   font-size: 1rem;
-  color: ${({ selected, theme }) => (selected ? theme.textColor : theme.royalBlue)};
+  color: ${({ selected, theme }) => (selected ? theme.textColor : theme.royalGreen)};
   height: 2rem;
-  border: 1px solid ${({ selected, theme }) => (selected ? theme.mercuryGray : theme.royalBlue)};
+  border: 1px solid ${({ selected, theme }) => (selected ? theme.mercuryGray : theme.royalGreen)};
   border-radius: 2.5rem;
   background-color: ${({ selected, theme }) => (selected ? theme.concreteGray : theme.zumthorBlue)};
   outline: none;
@@ -79,11 +79,11 @@ const CurrencySelect = styled.button`
 
   :hover {
     border: 1px solid
-      ${({ selected, theme }) => (selected ? darken(0.1, theme.mercuryGray) : darken(0.1, theme.royalBlue))};
+      ${({ selected, theme }) => (selected ? darken(0.1, theme.mercuryGray) : darken(0.1, theme.royalGreen))};
   }
 
   :focus {
-    border: 1px solid ${({ theme }) => darken(0.1, theme.royalBlue)};
+    border: 1px solid ${({ theme }) => darken(0.1, theme.royalGreen)};
   }
 
   :active {
@@ -91,7 +91,7 @@ const CurrencySelect = styled.button`
   }
 `
 
-const Aligner = styled.span`
+export const Aligner = styled.span`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -102,7 +102,7 @@ const StyledDropDown = styled(DropDown)`
   height: 35%;
 
   path {
-    stroke: ${({ selected, theme }) => (selected ? theme.textColor : theme.royalBlue)};
+    stroke: ${({ selected, theme }) => (selected ? theme.textColor : theme.royalGreen)};
   }
 `
 
@@ -121,7 +121,7 @@ const Container = styled.div`
 
   background-color: ${({ theme }) => theme.inputBackground};
   :focus-within {
-    border: 1px solid ${({ theme }) => theme.malibuBlue};
+    border: 1px solid ${({ theme }) => theme.malibuGreen};
   }
 `
 
@@ -256,7 +256,7 @@ const TokenRowRight = styled.div`
   align-items: flex-end;
 `
 
-const StyledTokenName = styled.span`
+export const StyledTokenName = styled.span`
   margin: 0 0.25rem 0 0.25rem;
 `
 

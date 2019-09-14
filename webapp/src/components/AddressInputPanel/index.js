@@ -61,7 +61,7 @@ const Input = styled.input`
   width: 0;
   background-color: ${({ theme }) => theme.inputBackground};
 
-  color: ${({ error, theme }) => (error ? theme.salmonRed : theme.royalBlue)};
+  color: ${({ error, theme }) => (error ? theme.salmonRed : theme.royalGreen)};
   overflow: hidden;
   text-overflow: ellipsis;
 
