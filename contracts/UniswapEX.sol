@@ -290,13 +290,25 @@ contract UniswapEX {
         uint256 bought;
 
         if (address(_fromToken) == ETH_ADDRESS) {
+            if (amount <= _fee) {
+                return false;
+            }
+
             uint256 sell = amount.sub(_fee);
             bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(sell);
         } else if (address(_toToken) == ETH_ADDRESS) {
             bought = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            if (bought <= _fee) {
+                return false;
+            }
+
             bought = bought.sub(_fee);
         } else {
             uint256 boughtEth = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(amount);
+            if (boughtEth <= _fee) {
+                return false;
+            }
+
             bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(boughtEth.sub(_fee));
         }
 

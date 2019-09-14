@@ -79,9 +79,6 @@ library Fabric {
         assembly{
           // Create the contract arguments for the constructor
           addr := create2(0, add(slotcode, 0x20), mload(slotcode), _key)
-          if iszero(extcodesize(addr)) {
-            revert(0, 0)
-          }
         }
 
         value = _token.balanceOf(addr);
