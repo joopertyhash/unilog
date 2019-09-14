@@ -53,7 +53,7 @@ const BALANCE_SELECTOR = '0x70a08231'
 const DEPOSIT_ORDER_EVENT_TOPIC0 = '0x294738b98bcebacf616fd72532d3d8d8d229807bf03b68b25681bfbbdb3d3fe5'
 
 // Order fee
-const ORDER_FEE = 1000000000000000 // 0,001 ETH
+const ORDER_FEE = 11600000000290000 // 0,0116 ETH
 
 const DownArrowBackground = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -309,7 +309,7 @@ async function fetchUserOrders(account, uniswapEXContract, setInputError) {
           if (!order) {
             continue
           }
-          const vault = await uniswapEXContract.vaultOfOrder(...order)
+          const vault = await uniswapEXContract.vaultOfOrder(...Object.values(order))
           const amount = await new Promise((res) => window.web3.eth.call({
             to: order.fromToken,
             data: `${BALANCE_SELECTOR}000000000000000000000000${vault.replace('0x', '')}`
@@ -785,7 +785,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
         </Button>
       </Flex>
       <div>
-          <h2>{t('Orders')}</h2>
+          <h2>{`${t('Orders')} ${orders.length > 0 ? `(${orders.length})` : ''}`}</h2>
           {isFetchingOrders ? t('fetchingOrders') :
             orders.length === 0 ? <p>{t('noOpenOrders')}</p> :
             <div>
@@ -821,9 +821,9 @@ export default function ExchangePage({ initialCurrency, sending }) {
                     </Aligner>
                   </CurrencySelect>
                 </div>
-                <p>{`Amount: ${ethers.utils.formatUnits(order.amount, 18)}`}</p>
-                <p>{`Min return: ${ethers.utils.formatUnits(order.minReturn, 18)}`}</p>
-                <p>{`Fee: ${ethers.utils.formatUnits(order.fee, 18)}`}</p>
+                <p>{`Amount: ${parseFloat(Number(ethers.utils.formatUnits(order.amount, 18)).toFixed(4))}`}</p>
+                <p>{`Min return: ${parseFloat(Number(ethers.utils.formatUnits(order.minReturn, 18)).toFixed(4))}`}</p>
+                <p>{`Fee: ${parseFloat(Number(ethers.utils.formatUnits(order.fee, 18)).toFixed(4))}`}</p>
                 <Button className="cta" onClick={() => onCancel(order)}>
                   {t('cancel')}
                 </Button>
