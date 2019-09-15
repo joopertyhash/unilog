@@ -58,13 +58,36 @@ contract UniswapEX {
     function() external payable { }
 
     function depositEth(
-        bytes calldata _data
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes32 _secret,
+        address _witness
     ) external payable {
         require(msg.value > 0, "No value provided");
 
-        bytes32 key = keccak256(_data);
+        bytes32 key = _keyOf(
+            IERC20(ETH_ADDRESS),
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _witness
+        );
+
+        bytes memory data = abi.encodePacked(
+            ETH_ADDRESS,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _secret,
+            _witness
+        );
+
         ethDeposits[key] = ethDeposits[key].add(msg.value);
-        emit DepositETH(key, msg.sender, msg.value, _data);
+        emit DepositETH(key, msg.sender, msg.value, data);
     }
 
     function cancelOrder(
@@ -103,6 +126,15 @@ contract UniswapEX {
             _owner,
             _witness,
             amount
+        );
+    }
+
+    function readWitnesses(
+        bytes calldata _witnesses
+    ) external view returns (address) {
+        return SigUtils.ecrecover2(
+            keccak256(abi.encodePacked(msg.sender)),
+            _witnesses
         );
     }
 
@@ -168,7 +200,7 @@ contract UniswapEX {
             _minReturn,
             _fee,
             _owner,
-            _salt,
+            witness,
             msg.sender,
             amount,
             bought
@@ -182,6 +214,7 @@ contract UniswapEX {
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
+        address _witness,
         bytes32 _secret
     ) external view returns (bytes memory) {
         return abi.encodeWithSelector(
@@ -192,7 +225,7 @@ contract UniswapEX {
                 _minReturn,
                 _fee,
                 _owner,
-                _salt
+                _witness
             ),
             _amount,
             abi.encode(
@@ -201,26 +234,28 @@ contract UniswapEX {
                 _minReturn,
                 _fee,
                 _owner,
-                _salt
+                _secret,
+                _witness
             )
         );
     }
 
     function encodeEthOrder(
-        address _fromToken,
         address _toToken,
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
-        bytes32 _secret
+        bytes32 _secret,
+        address _witness
     ) external pure returns (bytes memory) {
         return abi.encode(
-            _fromToken,
+            IERC20(ETH_ADDRESS),
             _toToken,
             _minReturn,
             _fee,
             _owner,
-            _salt
+            _secret,
+            _witness
         );
     }
 
@@ -232,7 +267,8 @@ contract UniswapEX {
         uint256 minReturn,
         uint256 fee,
         address payable owner,
-        bytes32 secret
+        bytes32 secret,
+        address witness
     ) {
         (
             fromToken,
@@ -243,8 +279,17 @@ contract UniswapEX {
             secret
         ) = abi.decode(
             _data,
-            (address, address, uint256, uint256, address, bytes32)
+            (
+                address,
+                address,
+                uint256,
+                uint256,
+                address,
+                bytes32
+            )
         );
+
+        // TODO Decode witness
     }
 
     function existOrder(

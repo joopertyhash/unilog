@@ -1,6 +1,8 @@
 import assertRevert from './helpers/assertRevert'
 import { balanceSnap, etherSnap } from './helpers/balanceSnap'
 
+const eutils = require('ethereumjs-util')
+
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
@@ -25,7 +27,41 @@ function buildCreate2Address(creatorAddress, saltHex, byteCode) {
     .slice(-40)}`.toLowerCase()
 }
 
-contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
+function toAddress(pk) {
+  return eutils.toChecksumAddress(eutils.bufferToHex(eutils.privateToAddress(eutils.toBuffer(pk))))
+}
+
+function sign(address, priv) {
+  const hash = web3.utils.soliditySha3(
+    { t: 'address', v: address }
+  )
+  const sig = eutils.ecsign(
+    eutils.toBuffer(hash),
+    eutils.toBuffer(priv)
+  )
+
+  return eutils.bufferToHex(Buffer.concat([sig.r, sig.s, eutils.toBuffer(sig.v)]))
+}
+
+/*
+const dependencies = eutils.bufferToHex(
+                Buffer.concat([
+                    eutils.toBuffer(wallet.address),
+                    eutils.toBuffer(
+                        web3.eth.abi.encodeFunctionCall({
+                            name: 'relayedBy',
+                            type: 'function',
+                            inputs: [{
+                                type: 'bytes32',
+                                name: 'id',
+                            }],
+                        }, [did])
+                    ),
+                ])
+            );
+*/
+
+contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
   // globals
   const zeroAddress = '0x0000000000000000000000000000000000000000'
   const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
@@ -60,7 +96,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
   let uniswapToken1
   let uniswapToken2
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create tokens
     token1 = await ERC20.new(creationParams)
     token2 = await ERC20.new(creationParams)
@@ -99,29 +135,40 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
     })
   })
 
-  describe('Constructor', function() {
-    it('should be depoyed', async function() {
+  describe('Constructor', function () {
+    it('should be depoyed', async function () {
       const contract = await UniswapEx.new(uniswapFactory.address)
 
       expect(contract).to.not.be.equal(zeroAddress)
     })
   })
-  describe('It should trade on Uniswap', async function() {
+  describe('It should trade on Uniswap', async function () {
     it('should execute buy tokens with ETH', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret);
+
       // Create order
       const encodedOrder = await uniswapEx.encodeEthOrder(
-        ethAddress, // Sell ETH
-        token1.address, // Buy TOKEN 1
-        new BN(300), // Get at least 300 Tokens
-        new BN(10), // Pay 10 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT
+        token1.address,    // Buy TOKEN 1
+        new BN(300),       // Get at least 300 Tokens
+        new BN(10),        // Pay 10 WEI to sender
+        user,              // Owner of the order
+        secret,            // Witness secret
+        witness            // Witness public address
       )
 
-      await uniswapEx.depositEth(encodedOrder, {
-        value: new BN(10000),
-        from: user
-      })
+      await uniswapEx.depositEth(
+        token1.address,    // Buy TOKEN 1
+        new BN(300),       // Get at least 300 Tokens
+        new BN(10),        // Pay 10 WEI to sender
+        user,              // Owner of the order
+        secret,            // Witness secret
+        witness,           // Witness public address
+        {
+          value: new BN(10000),
+          from: user
+        }
+      )
 
       // Take balance snapshots
       const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
@@ -134,14 +181,17 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
         'uniswap'
       )
 
+      // Sign witnesses using the secret
+      const witnesses = sign(anotherUser, secret)
+
       // Execute order
       const tx = await uniswapEx.executeOrder(
-        ethAddress, // Sell ETH
+        ethAddress,     // Sell ETH
         token1.address, // Buy TOKEN 1
-        new BN(300), // Get at least 300 Tokens
-        new BN(10), // Pay 10 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT,
+        new BN(300),    // Get at least 300 Tokens
+        new BN(10),     // Pay 10 WEI to sender
+        user,           // Owner of the order
+        witnesses,      // Witnesses of the secret
         {
           from: anotherUser,
           gasPrice: 0
@@ -236,7 +286,7 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       await uniswapEtherSnap.requireDecrease(bought.add(new BN(15)))
       await userTokenSnap.requireIncrease(bought)
     })
-    it('Should exchange tokens for tokens', async function() {
+    it('Should exchange tokens for tokens', async function () {
       // Encode order transfer
       const orderTx = await uniswapEx.encodeTokenOrder(
         token1.address, // Sell token 1
@@ -327,8 +377,8 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       await userToken2Snap.requireIncrease(bought)
     })
   })
-  describe('Get vault', function() {
-    it('should return correct vault', async function() {
+  describe('Get vault', function () {
+    it('should return correct vault', async function () {
       const address = (await vaultFactory.getVault(fakeKey)).toLowerCase()
       const expectedAddress = buildCreate2Address(
         vaultFactory.address,
@@ -338,12 +388,12 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       expect(address).to.not.be.equal(zeroAddress)
       expect(address).to.be.equal(expectedAddress)
     })
-    it('should return same vault for the same key', async function() {
+    it('should return same vault for the same key', async function () {
       const address = await vaultFactory.getVault(fakeKey)
       const expectedAddress = await vaultFactory.getVault(fakeKey)
       expect(address).to.be.equal(expectedAddress)
     })
-    it('should return a different vault for a different key', async function() {
+    it('should return a different vault for a different key', async function () {
       const address = await vaultFactory.getVault(fakeKey)
       const expectedAddress = await vaultFactory.getVault(anotherFakeKey)
       expect(address).to.not.be.equal(zeroAddress)
@@ -351,13 +401,13 @@ contract('UniswapEx', function([_, owner, user, anotherUser, hacker]) {
       expect(address).to.not.be.equal(expectedAddress)
     })
   })
-  describe('Create vault', function() {
-    it('should return correct vault', async function() {
+  describe('Create vault', function () {
+    it('should return correct vault', async function () {
       const address = await vaultFactory.getVault(fakeKey)
       await token1.setBalance(ONE_ETH, address)
       await vaultFactory.executeVault(fakeKey, token1.address, user)
     })
-    it('not revert if vault has no balance', async function() {
+    it('not revert if vault has no balance', async function () {
       await vaultFactory.executeVault(fakeKey, token1.address, user)
     })
   })

@@ -29,5 +29,8 @@
     "mocha": "^6.0.2",
     "truffle": "^5.0.33",
     "truffle-flattener": "^1.2.4"
+  },
+  "devDependencies": {
+    "ethereumjs-util": "^6.1.0"
   }
 }
