@@ -211,8 +211,8 @@ contract UniswapEX {
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
-        address _witness,
-        bytes32 _secret
+        bytes32 _secret,
+        address _witness
     ) external view returns (bytes memory) {
         return abi.encodeWithSelector(
             _fromToken.transfer.selector,

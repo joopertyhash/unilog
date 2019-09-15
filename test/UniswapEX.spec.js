@@ -203,24 +203,28 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       await uniswapTokenSnap.requireDecrease(bought)
     })
     it('should execute sell tokens for ETH', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret);
+
       // Encode order transfer
       const orderTx = await uniswapEx.encodeTokenOrder(
         token1.address, // Sell token 1
-        ethAddress, // Buy ETH
-        new BN(10000), // Tokens to sell
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(15), // Pay 15 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT
+        ethAddress,     // Buy ETH
+        new BN(10000),  // Tokens to sell
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user,           // Owner of the order
+        secret,         // Witness secret
+        witness         // Witness address
       )
 
       const vaultAddress = await uniswapEx.vaultOfOrder(
         token1.address, // Sell token 1
-        ethAddress, // Buy ETH
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(15), // Pay 15 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT
+        ethAddress,     // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user,           // Owner of the order
+        witness         // Witness address
       )
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
@@ -257,14 +261,17 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       const uniswapEtherSnap = await etherSnap(uniswapToken1.address, 'uniswap')
       const userTokenSnap = await etherSnap(user, 'user')
 
+      // Sign witnesses using the secret
+      const witnesses = sign(anotherUser, secret)
+
       // Execute order
       const tx = await uniswapEx.executeOrder(
         token1.address, // Sell token 1
-        ethAddress, // Buy ETH
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(15), // Pay 15 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT,
+        ethAddress,     // Buy ETH
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(15),     // Pay 15 WEI to sender
+        user,           // Owner of the order
+        witnesses,      // Witnesses, sender signed using the secret
         {
           from: anotherUser,
           gasPrice: 0
@@ -282,24 +289,28 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       await userTokenSnap.requireIncrease(bought)
     })
     it('Should exchange tokens for tokens', async function () {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret);
+
       // Encode order transfer
       const orderTx = await uniswapEx.encodeTokenOrder(
         token1.address, // Sell token 1
         token2.address, // Buy TOKEN 2
-        new BN(1000), // Tokens to sell
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(9), // Pay WEI to sender
-        user, // Owner of the order
-        FIXED_SALT
+        new BN(1000),   // Tokens to sell
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay WEI to sender
+        user,           // Owner of the order
+        secret,         // Witness secret
+        witness         // Witness address
       )
 
       const vaultAddress = await uniswapEx.vaultOfOrder(
         token1.address, // Sell token 1
         token2.address, // Buy ETH
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(9), // Pay WEI to sender
-        user, // Owner of the order
-        FIXED_SALT
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay WEI to sender
+        user,           // Owner of the order
+        witness         // Wirness address
       )
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
@@ -345,14 +356,16 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       )
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
+      const witnesses = sign(anotherUser, secret)
+
       // Execute order
       const tx = await uniswapEx.executeOrder(
         token1.address, // Sell token 1
         token2.address, // Buy ETH
-        new BN(50), // Get at least 50 ETH Wei
-        new BN(9), // Pay 9 WEI to sender
-        user, // Owner of the order
-        FIXED_SALT,
+        new BN(50),     // Get at least 50 ETH Wei
+        new BN(9),      // Pay 9 WEI to sender
+        user,           // Owner of the order
+        witnesses,      // Signature of the sender using the secret
         {
           from: anotherUser,
           gasPrice: 0
