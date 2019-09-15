@@ -50,8 +50,6 @@ module.exports = class Conector {
             orders.push(event.returnValues._data);
         }
 
-        return orders
-
         // Load events of all Uniswap tokens
         for (var i = 1; i < total; i++) {
             const token_addr = await this.getUniswapAddress(i);
