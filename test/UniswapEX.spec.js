@@ -158,12 +158,7 @@ contract('UniswapEx', function ([_, owner, user, anotherUser, hacker]) {
       )
 
       await uniswapEx.depositEth(
-        token1.address,    // Buy TOKEN 1
-        new BN(300),       // Get at least 300 Tokens
-        new BN(10),        // Pay 10 WEI to sender
-        user,              // Owner of the order
-        secret,            // Witness secret
-        witness,           // Witness public address
+        encodedOrder,
         {
           value: new BN(10000),
           from: user

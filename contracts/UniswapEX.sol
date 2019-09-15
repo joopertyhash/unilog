@@ -58,36 +58,33 @@ contract UniswapEX {
     function() external payable { }
 
     function depositEth(
-        IERC20 _toToken,
-        uint256 _minReturn,
-        uint256 _fee,
-        address payable _owner,
-        bytes32 _secret,
-        address _witness
+        bytes calldata _data
     ) external payable {
         require(msg.value > 0, "No value provided");
 
+        (
+            address fromToken,
+            address toToken,
+            uint256 minReturn,
+            uint256 fee,
+            address payable owner,
+            ,
+            address witness
+        ) = decodeOrder(_data);
+
+        require(fromToken == ETH_ADDRESS, "order is not from ETH");
+
         bytes32 key = _keyOf(
             IERC20(ETH_ADDRESS),
-            _toToken,
-            _minReturn,
-            _fee,
-            _owner,
-            _witness
-        );
-
-        bytes memory data = abi.encodePacked(
-            ETH_ADDRESS,
-            _toToken,
-            _minReturn,
-            _fee,
-            _owner,
-            _secret,
-            _witness
+            IERC20(toToken),
+            minReturn,
+            fee,
+            owner,
+            witness
         );
 
         ethDeposits[key] = ethDeposits[key].add(msg.value);
-        emit DepositETH(key, msg.sender, msg.value, data);
+        emit DepositETH(key, msg.sender, msg.value, _data);
     }
 
     function cancelOrder(
@@ -260,8 +257,8 @@ contract UniswapEX {
     }
 
     function decodeOrder(
-        bytes calldata _data
-    ) external pure returns (
+        bytes memory _data
+    ) public pure returns (
         address fromToken,
         address toToken,
         uint256 minReturn,
@@ -276,7 +273,8 @@ contract UniswapEX {
             minReturn,
             fee,
             owner,
-            secret
+            secret,
+            witness
         ) = abi.decode(
             _data,
             (
@@ -285,11 +283,10 @@ contract UniswapEX {
                 uint256,
                 uint256,
                 address,
-                bytes32
+                bytes32,
+                address
             )
         );
-
-        // TODO Decode witness
     }
 
     function existOrder(
