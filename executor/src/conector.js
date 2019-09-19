@@ -83,7 +83,7 @@ module.exports = class Conector {
                 const tx_data = full_tx.input;
 
                 console.log(`${checkedCount}/${events.length} - Check TX ${tx}`)
-                if (tx_data.startsWith("0xa9059cbb") && tx_data.length == 650) {
+                if (tx_data.startsWith("0xa9059cbb") && tx_data.length == 714) {
                     orders.push(tx_data)
                     console.log(`Found order TX ${tx}`)
                 }
