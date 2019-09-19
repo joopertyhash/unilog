@@ -1,7 +1,7 @@
 const factory_abi = require('./interfaces/uniswapFactory.js');
 const uniswapex_abi = require('./interfaces/uniswapEx.js');
 const ierc20_abi = require('./interfaces/ierc20.js');
-
+const retry = require('./retry.js');
 const env = require('../env.js');
 
 const MAX_JUMP = 10000000;
@@ -24,7 +24,7 @@ module.exports = class Conector {
             return this.uniswap_token_cache[i];
         }
 
-        const token_addr = await this.uni_factory.methods.getTokenWithId(i).call();
+        const token_addr = await retry(this.uni_factory.methods.getTokenWithId(i).call());
         this.uniswap_token_cache[i] = token_addr;
         return token_addr;
     }
@@ -32,17 +32,16 @@ module.exports = class Conector {
     async getOrders(toBlock) {
         toBlock = Math.min(toBlock, this.last_monitored + MAX_JUMP);
 
-        const total = await this.uni_factory.methods.tokenCount().call();
+        const total = await retry(this.uni_factory.methods.tokenCount().call());
 
         const orders = [];
         var tokensChecked = 0;
 
         // Load ETH orders
-        const events = await this.uniswap_ex.getPastEvents('DepositETH', {
+        const events = await retry(this.uniswap_ex.getPastEvents('DepositETH', {
             fromBlock: this.last_monitored,
             toBlock: toBlock
-        })
-
+        }));
 
         for (let i in events) {
             const event = events[i];
@@ -62,10 +61,10 @@ module.exports = class Conector {
 
             console.log(`${tokensChecked}/${total} - Monitoring token ${token_addr}`);
             const token = new this.w3.eth.Contract(ierc20_abi, token_addr);
-            const events = await token.getPastEvents('Transfer', {
+            const events = await retry(token.getPastEvents('Transfer', {
                 fromBlock: this.last_monitored,
                 toBlock: toBlock
-            });
+            }));
 
             const checked = []
             var checkedCount = 0
@@ -80,7 +79,7 @@ module.exports = class Conector {
                     continue
                 }
 
-                const full_tx = await this.w3.eth.getTransaction(tx)
+                const full_tx = await retry(this.w3.eth.getTransaction(tx));
                 const tx_data = full_tx.input;
 
                 console.log(`${checkedCount}/${events.length} - Check TX ${tx}`)
