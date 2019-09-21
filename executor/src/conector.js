@@ -14,9 +14,39 @@ module.exports = class Conector {
         this.uniswap_token_cache = {}
     }
 
-    async isValidOrder(order) {
-        // TODO: Check if order is valid
-        return true;
+    async getSafePastEvents(contract, name, fromBlock, toBlock) {
+        try {
+            return await contract.getPastEvents(name, {
+                fromBlock: fromBlock,
+                toBlock: toBlock
+            });
+        } catch (e) {
+            if (fromBlock != toBlock && e.toString().includes("more than 10000 results")) {
+                const pivot = Math.floor(fromBlock + (toBlock - fromBlock) / 2);
+                console.log(`${contract._address} - Split event query in two ${fromBlock}-${toBlock} -> ${pivot}`);
+
+                const a = await this.getSafePastEvents(
+                    contract,
+                    name,
+                    fromBlock,
+                    pivot
+                );
+
+                const b = await this.getSafePastEvents(
+                    contract,
+                    name,
+                    pivot,
+                    toBlock
+                );
+
+                const result = a.concat(b);
+
+                console.log(`${contract._address} - Split event query in two ${fromBlock}-${toBlock} -> ${pivot} : found ${result.length}`);
+                return result;
+            } else {
+                throw e;
+            }
+        }
     }
 
     async getUniswapAddress(i) {
@@ -38,10 +68,12 @@ module.exports = class Conector {
         var tokensChecked = 0;
 
         // Load ETH orders
-        const events = await retry(this.uniswap_ex.getPastEvents('DepositETH', {
-            fromBlock: this.last_monitored,
-            toBlock: toBlock
-        }));
+        const events = await retry(this.getSafePastEvents(
+            this.uniswap_ex,
+            'DepositETH',
+            this.last_monitored,
+            toBlock
+        ));
 
         for (let i in events) {
             const event = events[i];
@@ -61,10 +93,12 @@ module.exports = class Conector {
 
             console.log(`${tokensChecked}/${total} - Monitoring token ${token_addr}`);
             const token = new this.w3.eth.Contract(ierc20_abi, token_addr);
-            const events = await retry(token.getPastEvents('Transfer', {
-                fromBlock: this.last_monitored,
-                toBlock: toBlock
-            }));
+            const events = await retry(this.getSafePastEvents(
+                token,
+                'Transfer',
+                this.last_monitored,
+                toBlock
+            ));
 
             const checked = []
             var checkedCount = 0
